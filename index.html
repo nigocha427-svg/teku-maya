@@ -1,0 +1,1707 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="てくてくマヤ">
+<meta name="theme-color" content="#fff6e9">
+<title>てくてくマヤ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  // 明るさ・テーマカラーは描画前に当てて、ちらつきを防ぐ
+  try {
+    const t = localStorage.getItem('teku-theme'), c = localStorage.getItem('teku-color');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    if (c) document.documentElement.dataset.color = c;
+  } catch (e) {}
+</script>
+<style>
+/* ───── 色（DESIGN.md 2章）───── */
+:root{
+  --acL:#e07b22; --acLd:#a8561a; --acLt:#b8621a; --acD:#f39a3d; --acDd:#a85a10; --acDt:#f39a3d;
+  --bg:#fff6e9; --bg-dot:#f7e4c9; --surface:#fff; --ink:#2d3246; --ink2:#4a4c5c; --muted:#867868; --faint:#bcae9e;
+  --line:#f1dfc6; --edge:#ecd2ae;
+  --accent:var(--acL); --accent-deep:var(--acLd); --accent-text:var(--acLt); --on-accent:#fff; --soft:#fdebe1;
+  --negi:#6fa35f; --negi-deep:#4c7a40; --pink:#e06d8a; --pink-deep:#a84a5e; --sky:#4fa3e0; --sky-deep:#2a6f9e;
+  --set:#2d3246; --set-deep:#14161f; --sun:#ffd65c; --sun-deep:#c9a21e;
+  --ok:#36a35a; --ng:#e8613c; --bubble:#fff; --track:#f6e6cf;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+  /* イージング（モーションリファレンスの各動きに対応） */
+  --out-cubic:cubic-bezier(.33,1,.68,1); --out-back:cubic-bezier(.34,1.56,.64,1);
+  --inout-cubic:cubic-bezier(.65,0,.35,1); --inout-sine:cubic-bezier(.37,0,.63,1); --out-expo:cubic-bezier(.16,1,.3,1);
+  --out-quart:cubic-bezier(.25,1,.5,1);
+}
+/* テーマカラー（DESIGN.md 2.2 の表から） */
+:root[data-color="sakura"]{--acL:#d9607a;--acLd:#a23e55;--acLt:#b8455f;--acD:#f39aaf;--acDd:#a84a5e;--acDt:#f5a8ba}
+:root[data-color="sora"]{--acL:#2f86b0;--acLd:#1f5f80;--acLt:#236f96;--acD:#6fb9db;--acDd:#2a6582;--acDt:#86c6e4}
+:root[data-color="wakaba"]{--acL:#5a9a48;--acLd:#3c6d2f;--acLt:#477d38;--acD:#8cc77a;--acDd:#3f6634;--acDt:#95cf83}
+:root[data-theme="dark"]{
+  --bg:#1d2030; --bg-dot:#262a3d; --surface:#2a2e43; --ink:#fdf3e6; --ink2:#e3d9cc; --muted:#b9ab9b; --faint:#7f7b88;
+  --line:#3a3f58; --edge:#12141e; --accent:var(--acD); --accent-deep:var(--acDd); --accent-text:var(--acDt); --on-accent:#1d2030; --soft:#353a52;
+  --negi:#7fb36e; --negi-deep:#3f6634; --pink:#e57d97; --pink-deep:#8e3c50; --sky:#5aa9e0; --sky-deep:#2a5f86;
+  --set:#4a5070; --set-deep:#12141e; --ok:#5cc47b; --ng:#ff8160; --bubble:#353a54; --track:#353a52;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1d2030; --bg-dot:#262a3d; --surface:#2a2e43; --ink:#fdf3e6; --ink2:#e3d9cc; --muted:#b9ab9b; --faint:#7f7b88;
+    --line:#3a3f58; --edge:#12141e; --accent:var(--acD); --accent-deep:var(--acDd); --accent-text:var(--acDt); --on-accent:#1d2030; --soft:#353a52;
+    --negi:#7fb36e; --negi-deep:#3f6634; --pink:#e57d97; --pink-deep:#8e3c50; --sky:#5aa9e0; --sky-deep:#2a5f86;
+    --set:#4a5070; --set-deep:#12141e; --ok:#5cc47b; --ng:#ff8160; --bubble:#353a54; --track:#353a52;
+  }
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;color:var(--ink);background:var(--bg);
+  background-image:radial-gradient(var(--bg-dot) 1.6px,transparent 1.8px);background-size:22px 22px;
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;font-weight:500;font-size:16px;line-height:1.7}
+/* 画面切り替えの横スライド中に、ページが横にはみ出さないようにする */
+html,body{overflow-x:hidden}
+body.mapmode{overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+.hidden{display:none!important}
+main{max-width:560px;margin:0 auto;padding:calc(var(--safe-t) + 14px) 16px calc(var(--safe-b) + 48px);overflow-x:hidden}
+h2{font-size:14px;font-weight:700;color:var(--muted);margin:26px 4px 10px;display:flex;align-items:center;gap:8px}
+p{margin:8px 0}
+.muted{color:var(--muted);font-size:14px}
+.num{font-family:Fredoka,"Zen Maru Gothic",sans-serif;font-weight:600;font-variant-numeric:tabular-nums}
+.i{width:1.2em;height:1.2em;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ぷっくりした立体ボタン：押すと沈む（プレスフィードバック） */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:16px;padding:12px 18px;min-height:52px;
+  background:var(--accent);color:var(--on-accent);font-weight:700;font-size:17px;box-shadow:0 4px 0 var(--accent-deep);
+  transition:transform .12s var(--out-cubic),box-shadow .12s var(--out-cubic)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--accent-deep)}
+.btn.sub{background:var(--surface);color:var(--ink);box-shadow:0 4px 0 var(--edge);border:2px solid var(--line)}
+.btn.sub:active{box-shadow:0 1px 0 var(--edge)}
+.btn.green{background:var(--negi);color:#fff;box-shadow:0 4px 0 var(--negi-deep)}
+.btn.green:active{box-shadow:0 1px 0 var(--negi-deep)}
+.btn.danger{background:var(--surface);color:var(--accent-text);border:2px dashed var(--accent);box-shadow:none}
+.btn.small{min-height:40px;padding:6px 14px;font-size:15px;border-radius:14px}
+.btn.block{width:100%}
+.btn.fit{font-size:15px;padding:12px 10px}
+.btn:disabled{opacity:.4;pointer-events:none}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1}
+.card{background:var(--surface);border:2px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 5px 0 var(--edge)}
+.round{width:44px;height:44px;border-radius:50%;border:2px solid var(--line);background:var(--surface);box-shadow:0 3px 0 var(--edge);color:var(--ink);
+  display:inline-flex;align-items:center;justify-content:center;flex:none;transition:transform .12s var(--out-cubic),box-shadow .12s}
+.round:active{transform:translateY(2px);box-shadow:0 1px 0 var(--edge)}
+.round.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent);box-shadow:0 3px 0 var(--accent-deep)}
+.chip{font-size:12px;padding:2px 10px;border-radius:99px;background:var(--soft);color:var(--accent-text);font-weight:700;white-space:nowrap}
+.chip.gray{background:var(--track);color:var(--muted)}
+.pill{border:2px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 14px;min-height:42px;font-weight:700;font-size:15px;box-shadow:0 3px 0 var(--edge);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .12s var(--out-cubic),box-shadow .12s,background .2s}
+.pill:active{transform:translateY(2px);box-shadow:0 1px 0 var(--edge)}
+.pill.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent);box-shadow:0 3px 0 var(--accent-deep)}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+input,textarea{font:inherit;font-size:16px;color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:11px 14px;box-shadow:0 3px 0 var(--edge);background:var(--surface);width:100%;outline:none}
+input:focus,textarea:focus{border-color:var(--accent)}
+label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:14px 4px 6px}
+.note{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ───── キャラクター ───── */
+.mascot{display:block;image-rendering:pixelated}
+.mascot svg{display:block;width:100%;height:100%;overflow:visible}
+.bubble{position:relative;background:var(--bubble);border:2px solid var(--line);border-radius:16px;padding:8px 14px;font-weight:700;font-size:15px;box-shadow:0 3px 0 var(--edge);line-height:1.5}
+.bubble::after{content:"";position:absolute;width:12px;height:12px;background:var(--bubble);border:2px solid var(--line);border-top:0;border-right:0;transform:rotate(45deg)}
+.bubble.left::after{left:-8px;top:50%;margin-top:-7px}
+.bubble.down::after{left:50%;bottom:-8px;margin-left:-6px;transform:rotate(-45deg)}
+.bubble.up::after{right:38px;top:-8px;transform:rotate(135deg)}
+
+/* ───── ホーム ───── */
+.hero{display:flex;align-items:flex-end;gap:10px;margin:4px 0 6px}
+.logo{font-family:Fredoka,sans-serif;font-weight:700;font-size:40px;letter-spacing:.5px;line-height:1;color:var(--accent);text-shadow:0 3px 0 var(--accent-deep);margin:6px 0 4px;white-space:nowrap}
+.logo .bang{display:inline-block;color:var(--sun);text-shadow:0 3px 0 var(--sun-deep);transform-origin:50% 90%}
+.tagline{color:var(--muted);font-size:14px}
+.hero-mascot{width:92px;height:108px;flex:none;cursor:pointer;margin-left:auto}
+.hero-talk{display:flex;justify-content:flex-end;margin:0 0 14px}
+.today{display:flex;align-items:center;gap:14px}
+.ring{position:relative;flex:none}
+.ring>svg{display:block;width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-linecap:round}
+.ring .bgc{stroke:var(--track)}
+.ring .fgc{stroke:var(--accent);transition:stroke-dashoffset .9s var(--out-cubic)}
+.ring .in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.today .ring{width:112px;height:112px}
+.today .ring .in b{font-size:26px;line-height:1}
+.today .ring .in small{font-size:11px;color:var(--muted);font-weight:700}
+.today .info{flex:1;min-width:0}
+.today .steps{font-size:36px;line-height:1.05}
+.today .steps small{font-size:15px;color:var(--muted);font-family:"Zen Maru Gothic",sans-serif;font-weight:700;margin-left:2px}
+.today .goal{font-size:13px;color:var(--muted);font-weight:700}
+.minis{display:flex;gap:12px;margin-top:6px;font-size:13px;color:var(--ink2);font-weight:700;flex-wrap:wrap}
+.minis .num{font-size:16px}
+.syncrow{display:flex;align-items:center;gap:10px;margin-top:14px}
+.syncrow .btn{flex:1}
+.syncrow .when{font-size:12px;color:var(--muted);font-weight:700;line-height:1.4;text-align:right}
+.walking-bar{display:flex;align-items:center;gap:10px;width:100%;margin-top:14px;border:2px solid var(--negi);background:color-mix(in srgb,var(--negi) 14%,var(--surface));color:var(--ink);
+  border-radius:18px;padding:10px 14px;font-weight:700;box-shadow:0 4px 0 var(--negi-deep);text-align:left}
+.walking-bar .face{width:34px;height:32px}
+.walking-bar span{flex:1}
+
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mode{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;border-radius:22px;padding:14px 16px;min-height:128px;text-align:left;color:#fff;
+  transition:transform .12s var(--out-cubic),box-shadow .12s var(--out-cubic);overflow:hidden}
+.mode:active{transform:translateY(4px)}
+.mode .ic{width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;margin-bottom:auto}
+.mode .ic .i{width:26px;height:26px}
+.mode b{font-size:20px;line-height:1.3}
+.mode small{font-size:12px;opacity:.95;font-weight:700;line-height:1.4}
+.mode::after{content:"";position:absolute;right:-22px;bottom:-22px;width:86px;height:86px;border-radius:50%;background:rgba(255,255,255,.12)}
+.mode .new{position:absolute;top:12px;right:12px;background:var(--sun);color:#5a4300;font-size:11px;font-family:Fredoka,sans-serif;font-weight:700;border-radius:99px;padding:1px 8px}
+.mode.c1{background:var(--accent);box-shadow:0 5px 0 var(--accent-deep);color:var(--on-accent)}
+.mode.c1:active{box-shadow:0 1px 0 var(--accent-deep)}
+.mode.c2{background:var(--negi);box-shadow:0 5px 0 var(--negi-deep)}
+.mode.c2:active{box-shadow:0 1px 0 var(--negi-deep)}
+.mode.c3{background:var(--pink);box-shadow:0 5px 0 var(--pink-deep)}
+.mode.c3:active{box-shadow:0 1px 0 var(--pink-deep)}
+.mode.c4{background:var(--sky);box-shadow:0 5px 0 var(--sky-deep)}
+.mode.c4:active{box-shadow:0 1px 0 var(--sky-deep)}
+.mode.wide{grid-column:1 / -1;flex-direction:row;align-items:center;min-height:0;gap:12px;padding:12px 16px}
+.mode.wide .ic{margin:0;width:40px;height:40px}
+.mode.wide b{font-size:18px}
+.mode.wide small{margin-left:auto;text-align:right}
+.mode.wide::after{display:none}
+.mode.c5{background:var(--surface);color:var(--ink);border:2px solid var(--line);box-shadow:0 5px 0 var(--edge)}
+.mode.c5 .ic{background:var(--soft);color:var(--accent-text)}
+.mode.c5:active{box-shadow:0 1px 0 var(--edge)}
+.mode.c6{background:var(--set);box-shadow:0 5px 0 var(--set-deep)}
+.mode.c6:active{box-shadow:0 1px 0 var(--set-deep)}
+
+/* ───── サブ画面の見出し ───── */
+.topbar{display:flex;align-items:center;gap:12px;margin:0 0 16px}
+.topbar .ttl{font-size:20px;font-weight:700;flex:1;min-width:0}
+.topbar .face{width:48px;height:44px}
+.coinbox{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:2px solid var(--line);border-radius:99px;padding:3px 12px 3px 5px;box-shadow:0 3px 0 var(--edge);font-weight:700}
+.coinbox .num{font-size:18px}
+.coin{display:inline-block;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0 0 18%,var(--sun) 20% 100%);border:2px solid var(--sun-deep);position:relative;flex:none}
+.coin::after{content:"";position:absolute;inset:4px;border-radius:50%;border:1.5px solid var(--sun-deep);opacity:.7}
+
+/* ───── シンプルモード ───── */
+.big-talk{display:flex;justify-content:center;margin:2px 0 12px}
+.bigring{width:min(78vw,280px);height:min(78vw,280px);margin:0 auto}
+.bigring .in .mascot{width:76px;height:88px;margin-bottom:4px}
+.bigring .in b{font-size:46px;line-height:1}
+.bigring .in small{font-size:14px;color:var(--muted);font-weight:700}
+.bigring .done{margin-top:4px}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+.stat{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:10px 6px;text-align:center;box-shadow:0 4px 0 var(--edge)}
+.stat>b{display:block;font-size:24px;line-height:1.15}
+.stat>b small{font-size:12px;font-family:"Zen Maru Gothic",sans-serif;margin-left:1px}
+.stat>span{font-size:12px;color:var(--muted);font-weight:700}
+.livebox{display:flex;align-items:center;gap:12px;margin-top:16px}
+.livebox .txt{flex:1;font-size:13px;color:var(--muted);line-height:1.5}
+.livebox .txt b{color:var(--ink);font-size:15px;display:block}
+.week{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:16px;position:relative}
+.week .goal-line{position:absolute;left:0;right:0;border-top:2px dashed var(--accent);opacity:.55}
+.week .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.week .bar{width:100%;max-width:30px;border-radius:9px 9px 4px 4px;background:var(--track);height:0;transition:height .9s var(--out-cubic)}
+.week .bar.ok{background:var(--accent)}
+.week .col small{font-size:11px;color:var(--muted);font-weight:700}
+.week .col.today small{color:var(--accent-text)}
+.streak{display:flex;align-items:center;gap:12px}
+.streak .face{width:54px;height:50px}
+.streak b{font-size:26px}
+
+/* ───── 地図の画面（おでかけ・記録の地図）───── */
+.mapscreen{position:fixed;inset:0;z-index:5;background:var(--bg)}
+.mapscreen #map{position:absolute;inset:0}
+.leaflet-container{background:var(--bg);font-family:"Zen Maru Gothic",sans-serif}
+.mtop{position:absolute;top:calc(var(--safe-t) + 10px);left:12px;right:12px;z-index:1000;display:flex;gap:10px;align-items:flex-start;pointer-events:none}
+.mtop>*{pointer-events:auto}
+.wstats{flex:1;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border:2px solid var(--line);border-radius:18px;box-shadow:0 4px 0 var(--edge);padding:6px 4px}
+.wstats div{text-align:center;line-height:1.2}
+.wstats b{display:block;font-size:20px}
+.wstats span{font-size:11px;color:var(--muted);font-weight:700}
+.mside{position:absolute;right:12px;top:calc(var(--safe-t) + 86px);z-index:1000;display:flex;flex-direction:column;gap:10px}
+.mbottom{position:absolute;left:12px;right:12px;bottom:calc(var(--safe-b) + 14px);z-index:1000;display:flex;flex-direction:column;gap:10px}
+.mbottom .row .btn{min-height:56px}
+.restbar{display:flex;gap:10px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:20px;box-shadow:0 4px 0 var(--edge);padding:10px 12px}
+.restbar .mascot{width:46px;height:54px;flex:none}
+.restbar .t{flex:1;min-width:0;font-weight:700;font-size:14px;line-height:1.5}
+.restbar .t small{display:block;color:var(--muted);font-size:12px}
+.restbar .acts{display:flex;flex-direction:column;gap:6px}
+.me-pin{width:44px;height:44px;border-radius:50%;background:var(--surface);border:3px solid var(--accent);box-shadow:0 3px 0 var(--accent-deep);overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
+.me-pin .mascot{width:34px;height:31px}
+.spot-pin{width:32px;height:32px;border-radius:50%;background:var(--c);color:#fff;border:2.5px solid #fff;box-shadow:0 2px 0 rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
+.spot-pin .i{width:17px;height:17px}
+.st-pin{width:14px;height:14px;border-radius:50%;background:var(--surface);border:3px solid var(--faint)}
+.st-pin.on{background:var(--accent);border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+.st-pin.goal{width:20px;height:20px;background:var(--pink);border-color:#fff;box-shadow:0 0 0 2px var(--pink)}
+.leaflet-popup-content-wrapper{border-radius:16px;border:2px solid var(--line);box-shadow:0 4px 0 var(--edge);background:var(--surface);color:var(--ink)}
+.leaflet-popup-tip{background:var(--surface)}
+.leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.55}
+.leaflet-popup-content b{font-size:15px}
+.leaflet-popup-content .btn{margin-top:8px;width:100%}
+.pop-sub{color:var(--muted);font-size:12px}
+
+/* ───── 下から出るパネル ───── */
+.sheet-wrap{position:fixed;inset:0;z-index:2000}
+.sheet-bg{position:absolute;inset:0;background:rgba(29,32,48,.35);animation:fade .3s var(--out-cubic)}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:86vh;overflow:auto;background:var(--bg);border-radius:26px 26px 0 0;padding:0 16px calc(var(--safe-b) + 20px);
+  max-width:560px;margin:0 auto;animation:sheet-in .42s var(--inout-cubic)}
+.sheet-h{position:sticky;top:0;background:var(--bg);display:flex;align-items:center;gap:10px;padding:14px 0 12px;border-bottom:2px dashed var(--line);margin-bottom:14px;z-index:1}
+.sheet-h b{flex:1;font-size:18px}
+.sheet-wrap.out .sheet{transform:translateY(100%);transition:transform .25s var(--inout-cubic)}
+.sheet-wrap.out .sheet-bg{opacity:0;transition:opacity .25s}
+@keyframes sheet-in{from{transform:translateY(100%)}to{transform:none}}
+@keyframes fade{from{opacity:0}}
+.spot{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:10px 12px;margin-bottom:10px;box-shadow:0 4px 0 var(--edge);transition:transform .12s var(--out-cubic),box-shadow .12s}
+.spot:active{transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
+.spot .ic{width:40px;height:40px;border-radius:12px;background:var(--c);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.spot .t{flex:1;min-width:0}
+.spot .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spot .t small{color:var(--muted);font-size:12px;font-weight:700}
+.steps-guide{margin:0;padding-left:1.4em}
+.steps-guide li{margin:8px 0;color:var(--ink2);font-size:15px}
+.steps-guide b{color:var(--ink)}
+.code{display:block;background:var(--soft);border-radius:12px;padding:8px 12px;margin:6px 0;font-size:14px;line-height:1.7;font-weight:700;color:var(--ink)}
+
+/* ───── 中央に出るカード（お祝い・詳細）───── */
+.popwrap{position:fixed;inset:0;z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px}
+.popwrap .bg{position:absolute;inset:0;background:rgba(29,32,48,.4);animation:fade .3s}
+.popcard{position:relative;width:100%;max-width:380px;background:var(--surface);border:2px solid var(--line);border-radius:26px;box-shadow:0 6px 0 var(--edge);padding:22px 20px 18px;text-align:center;
+  animation:pop-scale .52s var(--out-back) both}
+.popcard .mascot{width:96px;height:112px;margin:-4px auto 4px}
+.popcard h3{margin:4px 0;font-size:22px}
+.popcard p{color:var(--ink2)}
+.popcard .btn{margin-top:12px}
+/* ポップスケール：5% → 108% → 100%（参考の 116% だとカードの端が画面からはみ出すため 108% に抑える） */
+@keyframes pop-scale{0%{transform:scale(.05);opacity:0}65%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+.bigstamp{width:120px;height:120px;margin:4px auto 6px;border-radius:50%;border:5px solid var(--ng);color:var(--ng);display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(-8deg);font-weight:700;line-height:1.15}
+.bigstamp b{font-size:26px}
+.bigstamp small{font-size:12px}
+
+/* ───── 活動履歴 ───── */
+.cal-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cal-h b{flex:1;text-align:center;font-size:20px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .wd{text-align:center;font-size:12px;font-weight:700;color:var(--muted)}
+.cal .wd:first-child{color:var(--ng)}
+.cal .wd:last-child{color:var(--sky)}
+.cal .d{position:relative;aspect-ratio:1/1.34;border-radius:12px;background:var(--surface);border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:2px 0 0;
+  overflow:hidden;transition:transform .12s var(--out-cubic)}
+.cal .d:active{transform:scale(.94)}
+.cal .d .n{font-size:12px;font-weight:700;color:var(--muted);line-height:1.3}
+.cal .d .s{font-size:10px;line-height:1.1;color:var(--ink2);margin-top:auto;margin-bottom:3px}
+.cal .d .mascot{width:20px;height:18px}
+.cal .d.ok{background:var(--soft);border-color:var(--accent)}
+.cal .d.today{box-shadow:0 0 0 2px var(--accent)}
+.cal .d.future{opacity:.4;pointer-events:none}
+.cal .d.blank{visibility:hidden}
+.outing{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:22px;padding:10px;margin-bottom:12px;box-shadow:0 5px 0 var(--edge);
+  transition:transform .12s var(--out-cubic),box-shadow .12s}
+.outing:active{transform:translateY(4px);box-shadow:0 1px 0 var(--edge)}
+.outing .thumb{width:84px;height:84px;border-radius:15px;flex:none;background:var(--bg);background-image:radial-gradient(var(--bg-dot) 1.4px,transparent 1.6px);background-size:12px 12px}
+.outing .thumb svg{width:100%;height:100%;display:block}
+.outing .t{flex:1;min-width:0}
+.outing .t b{display:block}
+.outing .t .minis{margin-top:2px}
+.empty{text-align:center;padding:26px 10px}
+.empty .mascot{width:90px;height:105px;margin:0 auto 8px}
+
+/* ───── すごろく ───── */
+.sugo-card .where{display:flex;align-items:center;gap:12px}
+.sugo-card .where .face{width:54px;height:48px;flex:none}
+.sugo-card .where .t{flex:1;min-width:0}
+.sugo-card .where b{font-size:20px;display:block;line-height:1.35}
+.sugo-card .lap{font-size:12px}
+.hoptrack{position:relative;height:96px;margin:6px 6px 0}
+.hoptrack .ln{position:absolute;left:0;right:0;bottom:22px;height:4px;border-radius:9px;background:var(--track)}
+.hoptrack .ln i{display:block;height:100%;border-radius:9px;background:var(--accent);width:0}
+.hoptrack .wp{position:absolute;bottom:16px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--surface);border:3px solid var(--faint)}
+.hoptrack .wp.on{background:var(--accent);border-color:var(--accent)}
+.hoptrack .wpl{position:absolute;bottom:-6px;transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.hoptrack .runner{position:absolute;bottom:30px;width:44px;height:52px;margin-left:-22px;transform-origin:50% 100%}
+.prog{height:14px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:8px}
+.prog i{display:block;height:100%;border-radius:99px;background:var(--accent);background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.22) 0 8px,transparent 8px 16px);width:0;transition:width .9s var(--out-cubic)}
+.sugomap{height:300px;border-radius:22px;overflow:hidden;border:2px solid var(--line);box-shadow:0 5px 0 var(--edge)}
+.stamps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.stamp{aspect-ratio:1;border-radius:50%;border:2px dashed var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--faint);line-height:1.1;text-align:center;padding:2px}
+.stamp.got{border:3px solid var(--ng);color:var(--ng);background:color-mix(in srgb,var(--ng) 8%,var(--surface));transform:rotate(-8deg)}
+.stamp.cur{box-shadow:0 0 0 3px var(--accent)}
+
+/* ───── きせかえ ───── */
+.dress{display:flex;align-items:flex-end;gap:14px}
+.dress .stage{flex:none;width:150px;height:170px;border-radius:24px;background:var(--soft);background-image:radial-gradient(var(--bg-dot) 1.6px,transparent 1.8px);background-size:14px 14px;
+  display:flex;align-items:flex-end;justify-content:center;padding:14px 0 10px;border:2px solid var(--line);box-shadow:0 4px 0 var(--edge)}
+.dress .stage .mascot{width:110px;height:128px}
+.dress .side{flex:1;min-width:0}
+.items{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.item{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:8px 4px 8px;box-shadow:0 4px 0 var(--edge);
+  transition:transform .12s var(--out-cubic),box-shadow .12s}
+.item:active{transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
+.item .mascot{width:56px;height:52px}
+.item b{font-size:13px;line-height:1.3}
+.item small{font-size:12px;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:3px}
+.item small .coin{width:14px;height:14px;border-width:1.5px}
+.item small .coin::after{display:none}
+.item.sel{border-color:var(--accent);box-shadow:0 4px 0 var(--accent-deep)}
+.item .badge{position:absolute;top:6px;right:6px;font-size:10px;padding:0 6px}
+.item.lock{opacity:.6}
+
+/* ───── 設定 ───── */
+details.card summary{font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+details.card summary::-webkit-details-marker{display:none}
+details.card summary::after{content:"";margin-left:auto;width:9px;height:9px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg);transition:transform .3s var(--out-cubic)}
+details.card[open] summary::after{transform:rotate(-135deg)}
+.sw{display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;font-size:13px;font-weight:700;color:var(--muted)}
+.sw i{width:38px;height:38px;border-radius:50%;background:var(--c);box-shadow:0 3px 0 rgba(0,0,0,.15);border:3px solid var(--surface)}
+.sw.on i{box-shadow:0 0 0 3px var(--ink)}
+.sw.on{color:var(--ink)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:2px dashed var(--line);font-size:14px}
+.kv:first-child{border-top:0}
+
+.toast{position:fixed;left:0;right:0;margin:0 auto;bottom:calc(var(--safe-b) + 24px);width:fit-content;max-width:calc(100% - 32px);background:var(--ink);color:var(--bg);
+  padding:12px 18px;border-radius:16px;font-size:15px;font-weight:700;z-index:3000;animation:pop-scale .52s var(--out-back) both}
+
+/* ───── モーション（https://motion-reference.takayustudio.jp/ を参考） ───── */
+/* ルートスライド：進むときは右から、戻るときは左から */
+@keyframes route-fwd{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:none}}
+@keyframes route-back{from{opacity:0;transform:translateX(-48px)}to{opacity:1;transform:none}}
+.enter-fwd{animation:route-fwd .42s var(--inout-cubic) both}
+.enter-back{animation:route-back .42s var(--inout-cubic) both}
+/* 地図の画面は位置を動かすと地図がずれるので、ビュークロスフェード（透明度だけ）にする */
+.enter-fade{animation:fade .52s var(--inout-cubic) both}
+/* リスト順次表示 */
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+[data-anim] .stagger>*{animation:rise .6s var(--out-cubic) both}
+[data-anim] .stagger>*:nth-child(2){animation-delay:.06s}[data-anim] .stagger>*:nth-child(3){animation-delay:.12s}[data-anim] .stagger>*:nth-child(4){animation-delay:.18s}
+[data-anim] .stagger>*:nth-child(5){animation-delay:.24s}[data-anim] .stagger>*:nth-child(6){animation-delay:.3s}[data-anim] .stagger>*:nth-child(n+7){animation-delay:.36s}
+/* 呼吸する拡縮 */
+@keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.97)}}
+.breathe{animation:breathe 2.4s var(--inout-sine) infinite;transform-origin:50% 100%}
+/* ゼリー強調：キャラをタップしたとき */
+@keyframes jelly{0%{transform:scale(1,1)}25%{transform:scale(1.15,.85)}45%{transform:scale(.9,1.1)}62%{transform:scale(1.05,.95)}80%{transform:scale(.98,1.02)}100%{transform:scale(1,1)}}
+.jelly{animation:jelly .76s var(--out-cubic);transform-origin:50% 100%}
+/* アテンションバウンス：うれしいとき */
+@keyframes hop{0%{transform:none}35%{transform:translateY(-16px)}60%{transform:translateY(0) scale(1.08,.92)}78%{transform:translateY(-4px)}100%{transform:none}}
+.hop{animation:hop .62s var(--out-cubic);transform-origin:50% 100%}
+/* てくてく歩き：ウェイポイントホップの1区間（跳ね 250ms＋着地 50ms、着地で scaleY .92）をくり返す。
+   参考の高さ -24px は地点間の移動用なので、その場の足踏みとして -5px に小さくしている */
+@keyframes walk{0%{transform:translateY(0) scaleY(1)}42%{transform:translateY(-5px) scaleY(1)}83%{transform:translateY(0) scaleY(1)}92%{transform:translateY(0) scaleY(.92)}100%{transform:translateY(0) scaleY(1)}}
+.walking{animation:walk .3s var(--out-cubic) infinite;transform-origin:50% 100%}
+/* コインスピン：rotateY 0 → 1080°、900ms、easeOutQuart */
+@keyframes coinspin{from{transform:perspective(320px) rotateY(0)}to{transform:perspective(320px) rotateY(1080deg)}}
+.coin.spin{animation:coinspin .9s var(--out-quart)}
+/* ロゴの「!」がたまに弾む */
+@keyframes bang{0%,70%,100%{transform:none}78%{transform:translateY(-8px) rotate(8deg)}86%{transform:translateY(0) scale(1.1,.9)}92%{transform:translateY(-2px)}}
+.logo .bang{animation:bang 3.6s var(--out-cubic) infinite}
+/* ポップスケール（吹き出し） */
+.pop{animation:pop-scale .52s var(--out-back) both}
+/* 紙吹雪（パーティクルバースト） */
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:2200;overflow:hidden}
+.confetti i{position:absolute;top:35%;left:50%;width:10px;height:14px;border-radius:3px;animation:burst 1.2s var(--out-cubic) forwards}
+@keyframes burst{from{transform:translate(0,0) rotate(0);opacity:1}to{transform:translate(var(--x),var(--y)) rotate(var(--r));opacity:0}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-foot" viewBox="0 0 24 24"><path d="M8.5 3C10.5 3 11.5 5.2 11.5 8s-1.2 5-3 5-3-2.2-3-5 1-5 3-5z"/><path d="M6 16.5h5v1.8a2.5 2.5 0 0 1-5 0z"/><path d="M15.5 6c2 0 3 2.2 3 5s-1.2 5-3 5-3-2.2-3-5 1-5 3-5z"/><path d="M13 19.2h5V21"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6.5l6-3 6 3 6-3v14l-6 3-6-3-6 3z"/><path d="M9 3.5v14M15 6.5v14"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4.5L17 13H5"/></symbol>
+  <symbol id="i-shirt" viewBox="0 0 24 24"><path d="M8.5 3.5L3 6.5l2 4.5 3-1.2V20.5h8V9.8l3 1.2 2-4.5-5.5-3a3.6 3.6 0 0 1-7 0z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.8-3.5M4 13a8 8 0 0 0 14.8 3.5"/><path d="M4 3.5v4h4M20 20.5v-4h-4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5l12 7.5-12 7.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5v14M15.5 5v14"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/></symbol>
+  <symbol id="i-coffee" viewBox="0 0 24 24"><path d="M4 9h13v4a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6z"/><path d="M17 10.5h1a2.8 2.8 0 0 1 0 5.6h-1.6"/><path d="M8 2.5v3M12 2.5v3"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M12 2.5l6 8h-2.8l3.8 6.5H5l3.8-6.5H6z"/></symbol>
+  <symbol id="i-torii" viewBox="0 0 24 24"><path d="M2.5 5c6.3 1.3 12.7 1.3 19 0"/><path d="M4.5 9.5h15M7 6v15M17 6v15M12 6.5v3"/></symbol>
+  <symbol id="i-bread" viewBox="0 0 24 24"><path d="M5 11.5a7 5.5 0 0 1 14 0V18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M9.5 10.5l1.5 2M13 10.5l1.5 2"/></symbol>
+  <symbol id="i-ice" viewBox="0 0 24 24"><path d="M6.5 10a5.5 5.5 0 0 1 11 0z"/><path d="M6.5 10l5.5 11 5.5-11"/></symbol>
+  <symbol id="i-mount" viewBox="0 0 24 24"><path d="M2 20l7-12 4.5 7 2.5-3.5L22 20z"/><circle cx="17.5" cy="5.5" r="1.8"/></symbol>
+  <symbol id="i-museum" viewBox="0 0 24 24"><path d="M3 9l9-5 9 5M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 21h18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M4.5 20h15"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15.5V4.5M7 9l5-5 5 5M4.5 20h15"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="17" rx="2.5"/><path d="M9 4.5V3h6v1.5"/><path d="M9 11h6M9 15h4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 3.5h4M6.5 7l1 13h9l1-13"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></symbol>
+</svg>
+
+<main id="app"></main>
+<input type="file" id="file-backup" accept=".json,application/json" class="hidden">
+
+<script>
+'use strict';
+// ───── キャラクター（トークン使用量MODのドット絵）─────
+// 1文字＝1ドット。表情は目のまわりを書き換えて作る（DESIGN.md 5章）
+const PAL = { a:'#db8c23', b:'#eda02e', c:'#2d3246', d:'#f5c67e', e:'#f7c7c3', f:'#a4a353', g:'#fdebe1', h:'#e7e668', i:'#f3a5b2',
+  j:'#566c55', k:'#6c846a', l:'#4c6842', m:'#a7791b', n:'#acacac' };
+const SPRITE = [
+  '...a.........a....', '..aba.......aba...', '..abac.aaaaabba...', '..cbcaabbbbbbba...', '..acbbbbbbbbbaaa..',
+  '.aabddbdddbbabaaa.', '.aabbabbbabbbbbaa.', '.aabaeabaeabbbbaaa', 'a.abefeaefeabbbbaa', '..aagfgggfggbbbaa.',
+  '..aaghggghggbbbaa.', '...aigggggiibbaa..', '.a.aaajeejjabaaa.a', '..aaajkhhfkjaaaaa.', '....jklhhhfkjaa...',
+  '...egllggellge....', '....ll.....llm....', '.....nnnnnnnmmm...', '......nenenmmmm.m.', '......nlnln...mm..', '......nn.nn.......',
+];
+const EYES = [5, 9];
+const EXPR = {
+  normal: [],
+  blink: EYES.flatMap(x => [[x, 8, 'e'], [x, 9, 'c'], [x, 10, 'g']]),
+  happy: EYES.flatMap(x => [[x, 8, 'e'], [x, 9, 'c'], [x, 10, 'g'], [x - 1, 10, 'c'], [x + 1, 10, 'c']]),
+};
+
+// ───── きせかえの小物（キャラの上に重ねるドット）─────
+// shape の1文字＝1ドット、ink で色を決める。y がマイナスなら頭の上にはみ出す
+const ITEMS = [
+  { id: 'ribbon', slot: 'head', name: 'リボン', price: 30, x: 6, y: -1, shape: ['PP.PP', 'PPDPP', '.P.P.'], ink: { P: '#f3a5b2', D: '#d9607a' } },
+  { id: 'band', slot: 'head', name: 'ハチマキ', price: 40, x: 1, y: 5, shape: ['RRRRRRRWRRRRRRRR.', '...............RR', '................R'], ink: { R: '#e8613c', W: '#fff' } },
+  { id: 'flower', slot: 'head', name: '花かんむり', price: 60, x: 4, y: 2, shape: ['.P..Y..W..', 'PGPGYGYGWG'], ink: { P: '#f3a5b2', Y: '#ffd65c', W: '#fff', G: '#6fa35f' } },
+  { id: 'hat', slot: 'head', name: 'むぎわら帽子', price: 90, x: 2, y: -1, shape: ['....YYYYY....', '...YYYYYYY...', '...RRRRRRR...', 'YYYYYYYYYYYYY', '.DDDDDDDDDDD.'], ink: { Y: '#f2cf6b', D: '#c99a3a', R: '#e8613c' } },
+  { id: 'crown', slot: 'head', name: '王冠', price: 0, lock: 'kyoto', x: 6, y: -2, shape: ['Y.Y.Y', 'YYYYY', 'YRYBY'], ink: { Y: '#ffc93c', R: '#e8613c', B: '#4fa3e0' } },
+  { id: 'glasses', slot: 'face', name: 'サングラス', price: 70, x: 3, y: 8, shape: ['KWKKKWKKK', '.KKK.KKK.'], ink: { K: '#2d3246', W: '#9fb3d8' } },
+  { id: 'heart', slot: 'face', name: 'ハートほっぺ', price: 30, x: 3, y: 11, shape: ['H.H....H.H', '.H......H.'], ink: { H: '#f06b8a' } },
+  { id: 'scarf', slot: 'neck', name: 'マフラー', price: 50, x: 5, y: 12, shape: ['RRRRRRR', 'DRDRDRD', '.....RR', '.....RD'], ink: { R: '#e8613c', D: '#b8452a' } },
+  { id: 'bowtie', slot: 'neck', name: '蝶ネクタイ', price: 40, x: 6, y: 12, shape: ['BB.BB', 'BBKBB', 'BB.BB'], ink: { B: '#4fa3e0', K: '#2a6f9e' } },
+];
+const SLOTS = [['head', 'あたま'], ['face', 'かお'], ['neck', 'くび']];
+
+function spriteSvg(expr = 'normal', faceOnly = false, outfit = S.wallet.wear) {
+  const grid = SPRITE.map(r => r.split(''));
+  for (const [x, y, c] of EXPR[expr] || []) grid[y][x] = c;
+  const rows = faceOnly ? grid.slice(0, 16) : grid;
+  let rects = '';
+  rows.forEach((row, y) => row.forEach((c, x) => { if (c !== '.') rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${PAL[c]}"/>`; }));
+  for (const id of Object.values(outfit || {})) {
+    const it = ITEMS.find(i => i.id === id);
+    if (!it) continue;
+    it.shape.forEach((row, dy) => [...row].forEach((c, dx) => {
+      const y = it.y + dy;
+      if (c !== '.' && y < rows.length) rects += `<rect x="${it.x + dx}" y="${y}" width="1.02" height="1.02" fill="${it.ink[c]}"/>`;
+    }));
+  }
+  return `<svg viewBox="0 0 18 ${rows.length}" shape-rendering="crispEdges" overflow="visible" aria-hidden="true">${rects}</svg>`;
+}
+const mascot = (expr = 'normal', cls = '', id = '') => `<div class="mascot ${cls}" ${id ? `id="${id}"` : ''} data-expr="${expr}">${spriteSvg(expr)}</div>`;
+const face = (expr = 'normal', cls = 'face', outfit) => `<div class="mascot ${cls}" data-face="1">${spriteSvg(expr, true, outfit)}</div>`;
+function setExpr(el, expr) { if (el) { el.dataset.expr = expr; el.innerHTML = spriteSvg(expr); } }
+// まばたき：ふだんの表情のときだけ、ときどき目を閉じる
+setInterval(() => {
+  document.querySelectorAll('.mascot[data-expr="normal"]').forEach(el => {
+    el.innerHTML = spriteSvg('blink');
+    setTimeout(() => { if (el.dataset.expr === 'normal') el.innerHTML = spriteSvg('normal'); }, 150);
+  });
+}, 3400);
+function replay(el, cls) { if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ───── 効果音（音声ファイルを使わず、その場で合成）─────
+let audio = null;
+function tone(freq, at, dur, type = 'triangle', vol = 0.2) {
+  const t = audio.currentTime + at, o = audio.createOscillator(), g = audio.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(audio.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function sfx(kind) {
+  if (!S.set.sound) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    if (kind === 'coin') { tone(1568, 0, 0.1, 'square', 0.06); tone(2093, 0.08, 0.3, 'square', 0.06); }
+    else if (kind === 'fanfare') [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, i * 0.1, i === 3 ? 0.6 : 0.16));
+    else if (kind === 'pop') tone(880, 0, 0.12);
+  } catch (e) {}
+}
+
+// ───── 保存（IndexedDB）─────
+// 記録はこの端末のブラウザの中だけに保存する（家族の記録はそれぞれのiPhoneに分かれる）
+const DB_NAME = 'teku-maya';
+let dbp = null;
+function idb() {
+  return dbp ||= new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function dbGet(key) {
+  const db = await idb();
+  return new Promise((res, rej) => { const r = db.transaction('kv').objectStore('kv').get(key); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+}
+async function dbSet(key, val) {
+  const db = await idb();
+  return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); });
+}
+// 書き込みが続くとき（歩数のカウント中など）は、まとめて保存する
+const saveTimers = {};
+function saveSoon(key, ms = 800) { clearTimeout(saveTimers[key]); saveTimers[key] = setTimeout(() => dbSet(key, S[key]), ms); }
+
+// ───── 状態 ─────
+const DEFAULT_SET = { name: '', goal: 8000, height: 160, weight: 55, sound: true, sugoStart: '' };
+const S = {
+  screen: 'home',
+  set: { ...DEFAULT_SET },
+  days: {},          // 'YYYY-MM-DD' → { h:ヘルスケアから受け取った歩数, hAt:受け取った時刻, l:アプリで数えた歩数(受け取り後), g:その日の目標, c:お祝い済み }
+  outings: [],       // おでかけの記録
+  wallet: { spent: 0, owned: [], wear: {} },
+  sugo: { seen: 0 }, // すごろくで、お祝いを見せた宿場の数（周回ぶんも含めた通算）
+  walk: null,        // 記録中のおでかけ
+  hist: { tab: 'cal', ym: '' },
+  outingId: null,
+  kise: { slot: 'head', try: null },
+};
+const app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const icon = (id, cls = 'i') => `<svg class="${cls}"><use href="#i-${id}"/></svg>`;
+const fmt = n => Math.round(n).toLocaleString('ja-JP');
+const pad = n => String(n).padStart(2, '0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayKey = () => keyOf(new Date());
+const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOf(d); };
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+const callName = () => (S.set.name || 'トレーナー') + 'ちゃん';
+
+function toast(msg) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+// ───── 歩数の計算 ─────
+function day(k) { return S.days[k] ||= { h: 0, l: 0, g: S.set.goal }; }
+const stepsOf = k => { const d = S.days[k]; return d ? (d.h || 0) + (d.l || 0) : 0; };
+const goalOf = k => S.days[k]?.g || S.set.goal;
+const stride = () => S.set.height * 0.45 / 100;                  // 歩幅（m）：身長 × 0.45
+const kmOf = steps => steps * stride() / 1000;
+const kcalOf = steps => S.set.weight * kmOf(steps) * 0.5;       // 歩くときの消費：体重(kg) × 距離(km) × 約0.5
+function streak() {
+  // 連続達成：今日が未達成でも、昨日まで続いていれば数える
+  let k = todayKey(), n = 0;
+  if (stepsOf(k) < goalOf(k)) k = addDays(k, -1);
+  while (S.days[k] && stepsOf(k) >= goalOf(k)) { n++; k = addDays(k, -1); }
+  return n;
+}
+
+// ───── コイン：歩いた記録からいつでも計算し直す（同じ日を二重に数えない）─────
+// 1,000歩ごとに1枚、目標を達成した日は+5枚、すごろくで宿場に着くたびに+3枚
+function coinsEarned() {
+  let c = 0;
+  for (const k of Object.keys(S.days)) {
+    const s = stepsOf(k);
+    c += Math.floor(s / 1000);
+    if (s >= goalOf(k)) c += 5;
+  }
+  return c + sugoState().reachedTotal * 3;
+}
+const coins = () => Math.max(0, coinsEarned() - S.wallet.spent);
+
+// ───── 東海道五十三次（すごろく）─────
+// [宿場, 日本橋からのおおよその距離 km, 緯度, 経度, マヤのひとこと]
+const TOKAIDO = [
+  ['日本橋', 0, 35.6840, 139.7745, '東海道のスタート地点！いってきまーす'],
+  ['品川', 7.8, 35.6195, 139.7395, '海がすぐそばの、最初の宿場だよ'],
+  ['川崎', 17.6, 35.5320, 139.7020, '川崎大師で有名なところ！'],
+  ['神奈川', 27.5, 35.4740, 139.6290, '横浜の港町のあたりだよ'],
+  ['保土ケ谷', 32.4, 35.4430, 139.5960, '箱根駅伝の権太坂があるんだって'],
+  ['戸塚', 41.2, 35.3960, 139.5310, '江戸から歩いて1日目に泊まる宿場だったんだって'],
+  ['藤沢', 49.0, 35.3460, 139.4840, '江の島へのより道スポット！'],
+  ['平塚', 62.7, 35.3260, 139.3410, '七夕まつりの町だよ'],
+  ['大磯', 65.4, 35.3090, 139.3110, '海水浴場の発祥の地なんだって'],
+  ['小田原', 81.0, 35.2500, 139.1540, '小田原城とかまぼこ！'],
+  ['箱根', 97.5, 35.1920, 139.0260, '箱根の関所に到着。山道がんばったね！'],
+  ['三島', 112.2, 35.1210, 138.9140, '富士山の湧き水がきれいな町'],
+  ['沼津', 117.9, 35.0950, 138.8640, '港のお魚がおいしいよ'],
+  ['原', 123.8, 35.1230, 138.7980, '富士山がとってもきれいに見える宿場！'],
+  ['吉原', 135.4, 35.1510, 138.6990, '道が曲がって富士山が左に見える「左富士」！'],
+  ['蒲原', 146.6, 35.1170, 138.6040, '雪の絵で有名な宿場だよ'],
+  ['由比', 150.5, 35.1040, 138.5590, '桜えびの町！'],
+  ['興津', 159.7, 35.0510, 138.5180, '清見寺っていうお寺があるよ'],
+  ['江尻', 163.8, 35.0190, 138.4890, '清水の港町だよ'],
+  ['府中', 174.4, 34.9740, 138.3830, '駿府城と安倍川もち！'],
+  ['丸子', 180.0, 34.9500, 138.3480, '名物はとろろ汁！'],
+  ['岡部', 188.0, 34.9180, 138.2850, '宇津ノ谷峠を越えた先の宿場'],
+  ['藤枝', 194.7, 34.8710, 138.2620, '静岡のお茶どころ'],
+  ['島田', 203.4, 34.8320, 138.1760, '大井川を渡る前の宿場'],
+  ['金谷', 207.3, 34.8190, 138.1290, '大井川を渡ったよ！茶畑がいっぱい'],
+  ['日坂', 214.0, 34.7870, 138.0560, '小夜の中山峠のふもと'],
+  ['掛川', 221.0, 34.7700, 138.0130, '掛川城がある町'],
+  ['袋井', 230.6, 34.7480, 137.9220, '東海道のちょうどまん中なんだって！'],
+  ['見附', 236.4, 34.7230, 137.8530, '天竜川の手前の宿場だよ'],
+  ['浜松', 252.3, 34.7040, 137.7330, 'うなぎと餃子の町！'],
+  ['舞坂', 263.2, 34.6840, 137.6080, '浜名湖のほとり'],
+  ['新居', 268.4, 34.6950, 137.5630, '新居の関所が今も残ってるよ'],
+  ['白須賀', 275.0, 34.6980, 137.4930, '潮見坂から海が見える'],
+  ['二川', 280.7, 34.7210, 137.4410, '本陣がそのまま残ってるんだって'],
+  ['吉田', 287.0, 34.7710, 137.3940, '今の豊橋。路面電車が走ってる'],
+  ['御油', 297.3, 34.8320, 137.3200, '松並木がきれいだよ'],
+  ['赤坂', 299.0, 34.8450, 137.3070, '御油からすぐの、近い宿場'],
+  ['藤川', 307.8, 34.9040, 137.2280, 'むらさき麦が名物'],
+  ['岡崎', 314.6, 34.9530, 137.1640, '徳川家康が生まれた町！八丁味噌も'],
+  ['池鯉鮒', 329.6, 35.0060, 137.0430, '今の知立。かきつばたが有名'],
+  ['鳴海', 340.6, 35.0790, 136.9500, '有松・鳴海しぼりの町'],
+  ['宮', 346.9, 35.1240, 136.9050, '熱田神宮！ここから船で桑名へ'],
+  ['桑名', 374.4, 35.0680, 136.6950, '名物は焼きはまぐり！'],
+  ['四日市', 387.0, 34.9640, 136.6240, '港の町だよ'],
+  ['石薬師', 397.8, 34.9080, 136.5530, '石薬師寺があるよ'],
+  ['庄野', 400.5, 34.8900, 136.5250, '雨の絵で有名な宿場'],
+  ['亀山', 408.4, 34.8560, 136.4520, '亀山城がある町'],
+  ['関', 414.3, 34.8520, 136.3920, '古い町並みがそのまま残ってるんだって'],
+  ['坂下', 420.8, 34.8880, 136.3360, '鈴鹿峠のふもと。もうすぐ近江！'],
+  ['土山', 430.6, 34.9370, 136.2830, '鈴鹿峠を越えたよ！'],
+  ['水口', 441.1, 34.9680, 136.1690, 'かんぴょうが名物'],
+  ['石部', 454.6, 35.0080, 136.0570, '京都を出た旅人が1日目に泊まった宿場'],
+  ['草津', 465.8, 35.0240, 135.9620, '中山道と合流！姥が餅が名物'],
+  ['大津', 480.2, 35.0060, 135.8640, '琵琶湖のほとり。ゴールまであと少し！'],
+  ['三条大橋', 492.0, 35.0090, 135.7720, 'ゴール！京都に到着〜！'],
+];
+const LAP_KM = TOKAIDO[TOKAIDO.length - 1][1];
+function sugoState() {
+  const start = S.set.sugoStart || todayKey();
+  let steps = 0;
+  for (const k of Object.keys(S.days)) if (k >= start) steps += stepsOf(k);
+  const km = kmOf(steps), lap = Math.floor(km / LAP_KM), pos = km - lap * LAP_KM;
+  let idx = 0;
+  while (idx + 1 < TOKAIDO.length && TOKAIDO[idx + 1][1] <= pos) idx++;
+  const next = TOKAIDO[idx + 1];
+  const frac = next ? (pos - TOKAIDO[idx][1]) / (next[1] - TOKAIDO[idx][1]) : 1;
+  return { steps, km, lap, pos, idx, next, frac, reachedTotal: lap * (TOKAIDO.length - 1) + idx };
+}
+
+// ───── ヘルスケアの歩数を受け取る ─────
+// ショートカットApp がクリップボードに入れた文字から、日付と歩数を読み取る
+function parseHealth(text) {
+  const t = String(text || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/，/g, ',').replace(/\r/g, '');
+  const dateRe = /(\d{4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})日?/g;
+  const toKey = m => `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
+  const toNum = s => Math.round(parseFloat(s.replace(/,/g, '')));
+  const out = {};
+  // ① 1行に「日付＝歩数」が並ぶ形
+  for (const line of t.split('\n')) {
+    const m = [...line.matchAll(dateRe)][0];
+    if (!m) continue;
+    const rest = line.slice(m.index + m[0].length).replace(/^\s*[=＝:：,、\t ]*\s*/, '').trim();
+    if (/^[\d,]+(\.\d+)?\s*(歩|steps?)?$/i.test(rest)) out[toKey(m)] = toNum(rest);
+  }
+  // ② 日付の一覧、「＝」、歩数の一覧の順に並ぶ形（ショートカットで作る形）
+  if (!Object.keys(out).length) {
+    const sep = t.search(/^\s*[=＝]\s*$/m);
+    if (sep >= 0) {
+      const dates = [...t.slice(0, sep).matchAll(dateRe)].map(toKey);
+      const vals = t.slice(sep).split('\n').slice(1).map(s => s.trim()).filter(s => /^[\d,]+(\.\d+)?/.test(s)).map(s => toNum(s.match(/^[\d,]+(\.\d+)?/)[0]));
+      dates.forEach((k, i) => { if (vals[i] != null) out[k] = vals[i]; });
+    }
+  }
+  // ③ 数字だけなら今日の歩数
+  if (!Object.keys(out).length) {
+    const m = t.trim().match(/^[\d,]+(\.\d+)?\s*歩?$/);
+    if (m) out[todayKey()] = toNum(m[0]);
+  }
+  const today = todayKey();
+  for (const k of Object.keys(out)) if (k > today || !(out[k] >= 0 && out[k] < 300000)) delete out[k];
+  return out;
+}
+async function applyHealth(map) {
+  const keys = Object.keys(map).sort();
+  if (!keys.length) return false;
+  const before = sugoState().reachedTotal, today = todayKey();
+  for (const k of keys) {
+    const d = day(k);
+    d.h = map[k]; d.hAt = Date.now();
+    if (k === today) d.l = 0;   // アプリで数えた分は、ヘルスケアの数字に含まれている
+  }
+  await dbSet('days', S.days);
+  const after = sugoState().reachedTotal;
+  const extra = after > before ? `　すごろくも${after - before}宿進んだよ！` : '';
+  toast(keys.includes(today) ? `今日は ${fmt(stepsOf(today))}歩！${keys.length > 1 ? `（${keys.length}日分もらったよ）` : ''}${extra}` : `${keys.length}日分の歩数をもらったよ！${extra}`);
+  return true;
+}
+async function syncSteps() {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch (e) {}
+  const got = parseHealth(text);
+  if (Object.keys(got).length) { await applyHealth(got); sfx('coin'); render('none'); celebrateIfDone(); return; }
+  openPasteSheet();
+}
+function openPasteSheet() {
+  const sh = openSheet('歩数をもらう', `
+    <p style="margin-top:0">ショートカット「マヤに歩数」を動かしてから、もう一度「歩数をもらう」を押してね。</p>
+    <p class="note">コピーした文字をここに貼り付けても受け取れます。数字だけを入れると、今日の歩数になります。</p>
+    <textarea id="paste" rows="4" placeholder="例：8234"></textarea>
+    <div class="row" style="margin-top:12px"><button class="btn" id="paste-ok">${icon('check')}受け取る</button></div>
+    <button class="btn sub block" style="margin-top:12px" id="paste-guide">${icon('clip')}ショートカットの作り方</button>`);
+  sh.el.querySelector('#paste-ok').onclick = async () => {
+    const got = parseHealth(sh.el.querySelector('#paste').value);
+    if (!Object.keys(got).length) return toast('歩数が読み取れなかったよ');
+    sh.close(); await applyHealth(got); render('none'); celebrateIfDone();
+  };
+  sh.el.querySelector('#paste-guide').onclick = () => { sh.close(); openGuide(); };
+}
+const GUIDE = `
+  <ol class="steps-guide">
+    <li>iPhoneの<b>「ショートカット」</b>アプリを開き、右上の<b>「＋」</b>を押す。名前は<b>「マヤに歩数」</b>にする。</li>
+    <li><b>「アクションを追加」</b>で「ヘルスケアサンプルを検索」を探して追加する。
+      <span class="code">種類：歩数<br>フィルタ：開始日 ／ 過去7日間<br>グループ化：日</span>
+      「グループ化」が見えないときは、アクションの「＞」を押すと出てきます。</li>
+    <li>次に<b>「テキスト」</b>を追加して、中を次の4行にする。
+      <span class="code">てくてく<br>［ヘルスケアサンプル］→ 押して「開始日」を選ぶ<br>＝<br>［ヘルスケアサンプル］→ 押して「値」を選ぶ</span>
+      ［ヘルスケアサンプル］は、キーボードの上に出る青い候補から選びます。2回入れて、それぞれを押すと「開始日」「値」に変えられます。</li>
+    <li>最後に<b>「クリップボードにコピー」</b>を追加する。</li>
+    <li>右上の<b>「▶」</b>で一度動かし、ヘルスケアの読み取りを<b>「許可」</b>する。</li>
+  </ol>
+  <p class="note">使うとき：ショートカットを動かす → てくてくマヤを開く →「歩数をもらう」→ 出てきた「ペースト」を押す。7日分まとめて受け取れるので、毎日でなくても大丈夫です。</p>
+  <p class="note">もっと楽にするには：ショートカットを長押し →「ホーム画面に追加」や、設定アプリの「アクセシビリティ ＞ タッチ ＞ 背面タップ」に割り当てると、すぐ動かせます。</p>`;
+function openGuide() { openSheet('ショートカットの作り方', GUIDE); }
+
+// ───── その場で数える（アプリを開いている間だけの万歩計）─────
+// 加速度センサーの揺れの山を数える。4歩続いたら歩いていると判断して数え始める
+const Ped = {
+  on: false, smooth: 9.8, base: 9.8, above: false, lastPeak: 0, run: 0, pending: 0, gotEvent: false,
+  async start() {
+    if (this.on) return true;
+    if (typeof DeviceMotionEvent === 'undefined') { toast('この端末は歩数センサーが使えないみたい'); return false; }
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      try { if (await DeviceMotionEvent.requestPermission() !== 'granted') { toast('「動作と方向」を許可してね'); return false; } }
+      catch (e) { toast('「動作と方向」を許可してね'); return false; }
+    }
+    this.on = true; this.gotEvent = false; this.run = 0; this.pending = 0;
+    window.addEventListener('devicemotion', this.handler);
+    setTimeout(() => { if (this.on && !this.gotEvent) { this.stop(); toast('この端末は歩数センサーが使えないみたい'); render('none'); } }, 2500);
+    return true;
+  },
+  stop() { this.on = false; window.removeEventListener('devicemotion', this.handler); },
+  handler: e => {
+    const a = e.accelerationIncludingGravity;
+    if (!a || a.x == null) return;
+    const P = Ped; P.gotEvent = true;
+    const mag = Math.hypot(a.x, a.y, a.z), now = performance.now();
+    P.smooth = P.smooth * 0.75 + mag * 0.25;   // 細かい震えをならす
+    P.base = P.base * 0.97 + P.smooth * 0.03;  // ゆっくり動く基準
+    const d = P.smooth - P.base;
+    if (!P.above && d > 1.1) {
+      P.above = true;
+      const gap = now - P.lastPeak;
+      if (gap > 280) {
+        if (gap > 2000) { P.run = 0; P.pending = 0; }
+        P.lastPeak = now; P.run++;
+        if (P.run < 4) P.pending++;
+        else { addLive(P.pending + 1); P.pending = 0; }
+      }
+    } else if (P.above && d < 0.3) P.above = false;
+  },
+};
+function addLive(n) {
+  const d = day(todayKey());
+  d.l = (d.l || 0) + n;
+  if (S.walk && S.walk.status === 'rec') S.walk.steps += n;
+  saveSoon('days');
+  updateLive();
+}
+// 画面全体を描き直さず、数字とリングだけ更新する
+function updateLive() {
+  const k = todayKey(), s = stepsOf(k), g = goalOf(k);
+  document.querySelectorAll('[data-live="steps"]').forEach(el => el.textContent = fmt(s));
+  document.querySelectorAll('[data-live="km"]').forEach(el => el.textContent = kmOf(s).toFixed(1));
+  document.querySelectorAll('[data-live="kcal"]').forEach(el => el.textContent = fmt(kcalOf(s)));
+  document.querySelectorAll('[data-live="left"]').forEach(el => el.textContent = fmt(Math.max(0, g - s)));
+  document.querySelectorAll('[data-live="pct"]').forEach(el => el.textContent = Math.min(999, Math.floor(s / g * 100)) + '%');
+  document.querySelectorAll('.ring .fgc').forEach(c => c.style.strokeDashoffset = ringOffset(s / g));
+  if (S.walk) updateWalkStats();
+  if (s >= g && !S.days[k].c) celebrateIfDone();
+}
+
+// ───── 共通の部品 ─────
+const RING_C = 2 * Math.PI * 52;
+const ringOffset = p => RING_C * (1 - Math.min(1, p));
+const ringSvg = () => `<svg viewBox="0 0 120 120"><circle class="bgc" cx="60" cy="60" r="52" stroke-width="12"/>
+  <circle class="fgc" cx="60" cy="60" r="52" stroke-width="12" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C}"/></svg>`;
+function animateRings(p) { requestAnimationFrame(() => setTimeout(() => app.querySelectorAll('.ring .fgc').forEach(c => c.style.strokeDashoffset = ringOffset(p)), 60)); }
+// カウントアップ：0から目標値まで数字を増やす（easeOutCubic）
+function countUp(root = app) {
+  root.querySelectorAll('[data-count]').forEach(el => {
+    const to = +el.dataset.count, dec = +(el.dataset.dec || 0), t0 = performance.now(), dur = 900;
+    const show = v => el.textContent = dec ? v.toFixed(dec) : fmt(v);
+    if (reduced()) return show(to);
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      show(to * e);
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+function confetti() {
+  if (reduced()) return;
+  const box = document.createElement('div'); box.className = 'confetti';
+  const cols = ['#f08a24', '#6fa35f', '#f3a5b2', '#ffd65c', '#4fa3e0'];
+  for (let i = 0; i < 42; i++) {
+    const p = document.createElement('i'), a = Math.random() * Math.PI * 2, r = 120 + Math.random() * 220;
+    p.style.cssText = `background:${pick(cols)};--x:${Math.cos(a) * r}px;--y:${Math.sin(a) * r + 120}px;--r:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * 0.12}s`;
+    box.appendChild(p);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 1500);
+}
+function openSheet(title, html) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sheet-wrap';
+  wrap.innerHTML = `<div class="sheet-bg"></div><div class="sheet"><div class="sheet-h"><b>${title}</b><button class="round" data-x aria-label="閉じる">${icon('close')}</button></div><div class="sheet-b">${html}</div></div>`;
+  document.body.appendChild(wrap);
+  const close = () => { wrap.classList.add('out'); setTimeout(() => wrap.remove(), 260); };
+  wrap.querySelector('.sheet-bg').onclick = close;
+  wrap.querySelector('[data-x]').onclick = close;
+  return { el: wrap.querySelector('.sheet-b'), close };
+}
+function popCard(html, onClose) {
+  const wrap = document.createElement('div');
+  wrap.className = 'popwrap';
+  wrap.innerHTML = `<div class="bg"></div><div class="popcard">${html}<button class="btn block" data-x>やったね！</button></div>`;
+  document.body.appendChild(wrap);
+  const close = () => { wrap.remove(); onClose && onClose(); };
+  wrap.querySelector('[data-x]').onclick = close;
+  wrap.querySelector('.bg').onclick = close;
+  setTimeout(() => replay(wrap.querySelector('.popcard .mascot'), 'hop'), 420);
+  return wrap;
+}
+// 目標を初めて達成したときだけお祝いする
+function celebrateIfDone() {
+  const k = todayKey(), d = S.days[k];
+  if (!d || d.c || stepsOf(k) < goalOf(k)) return;
+  d.c = 1; dbSet('days', S.days);
+  sfx('fanfare'); confetti();
+  popCard(`${mascot('happy')}<h3>目標達成！</h3><p>${callName()}、今日は <b class="num">${fmt(stepsOf(k))}</b>歩！<br>ごほうびのコイン<b class="num">+5</b>枚だよ</p>`, () => render('none'));
+}
+
+// ───── 画面の切り替え ─────
+const DEPTH = { home: 0, simple: 1, odekake: 1, history: 1, sugoroku: 1, kisekae: 1, settings: 1, outing: 2 };
+const MAP_SCREENS = ['odekake', 'outing'];
+let maps = [];
+function cleanup() {
+  maps.forEach(m => m.remove()); maps = [];
+  document.body.classList.remove('mapmode');
+}
+function go(screen) {
+  const dir = MAP_SCREENS.includes(screen) || MAP_SCREENS.includes(S.screen) ? 'fade'
+    : (DEPTH[screen] ?? 0) >= (DEPTH[S.screen] ?? 0) ? 'fwd' : 'back';
+  S.screen = screen;
+  render(dir);
+}
+function render(dir = 'none') {
+  cleanup();
+  ({ home: renderHome, simple: renderSimple, odekake: renderOdekake, history: renderHistory, outing: renderOuting,
+     sugoroku: renderSugoroku, kisekae: renderKisekae, settings: renderSettings })[S.screen]();
+  if (dir !== 'none') {
+    window.scrollTo(0, 0);
+    app.classList.remove('enter-fwd', 'enter-back', 'enter-fade'); void app.offsetWidth;
+    app.classList.add('enter-' + dir);
+    app.dataset.anim = '1';
+    clearTimeout(render.t);
+    render.t = setTimeout(() => delete app.dataset.anim, 1200);
+  }
+}
+app.addEventListener('animationend', e => { if (e.target === app) app.classList.remove('enter-fwd', 'enter-back', 'enter-fade'); });
+const topbar = (title, back = 'home', right = '') => `
+  <div class="topbar"><button class="round" data-act="go" data-id="${back}" aria-label="戻る">${icon('back')}</button>
+  <div class="ttl">${title}</div>${right}</div>`;
+const coinBox = (id = '') => `<span class="coinbox"><span class="coin" ${id ? `id="${id}"` : ''}></span><span class="num">${fmt(coins())}</span></span>`;
+
+// ───── ホーム ─────
+const TAP_LINES = ['てくてく、てくてく〜♪', 'マヤ、早く大人のレディになりたいな', '歩くと頭もすっきりするんだって！', 'お出かけするなら、マヤも連れてって！',
+  'すごろく、京都まで行けるかな？', 'コインを集めて、おしゃれしたいな〜', 'アイ・コピー！今日もいっしょに歩こ！'];
+function homeLine() {
+  const k = todayKey(), s = stepsOf(k), g = goalOf(k), d = S.days[k];
+  if (S.walk) return 'おでかけ中だよ！続きに戻る？';
+  if (!d?.hAt && new Date().getHours() >= 10 && s < g) return '「歩数をもらう」で、今日の歩数を教えてね！';
+  if (s >= g) return `目標達成！${callName()}すごーい！`;
+  if (s >= g * 0.7) return `あと${fmt(g - s)}歩！もうちょっと！`;
+  const h = new Date().getHours();
+  return h < 11 ? `おはよう、${callName()}！今日もてくてくしよ！` : h < 18 ? 'ちょっとお散歩いかない？' : '夜はゆっくり休んでね。また明日！';
+}
+function renderHome() {
+  const k = todayKey(), s = stepsOf(k), g = goalOf(k), d = S.days[k];
+  const sg = sugoState(), newSugo = sg.reachedTotal > S.sugo.seen;
+  const syncedAt = d?.hAt ? new Date(d.hAt) : null;
+  app.innerHTML = `
+    <div class="hero">
+      <div>
+        <div class="logo">tekuteku<span class="bang">!</span></div>
+        <div class="tagline">マヤといっしょに、てくてく歩こう</div>
+      </div>
+      ${mascot('normal', 'hero-mascot breathe', 'hero-mascot')}
+    </div>
+    <div class="hero-talk"><div class="bubble up pop" id="hero-bubble">${esc(homeLine())}</div></div>
+    <div class="stagger">
+      <div class="card">
+        <div class="today">
+          <div class="ring">${ringSvg()}<div class="in"><b class="num" data-live="pct">${Math.min(999, Math.floor(s / g * 100))}%</b><small>目標</small></div></div>
+          <div class="info">
+            <div class="goal">今日の歩数</div>
+            <div class="steps num"><span data-live="steps" data-count="${s}">0</span><small>歩</small></div>
+            <div class="goal">目標 ${fmt(g)}歩</div>
+            <div class="minis"><span><span class="num" data-live="km">${kmOf(s).toFixed(1)}</span> km</span><span><span class="num" data-live="kcal">${fmt(kcalOf(s))}</span> kcal</span></div>
+          </div>
+        </div>
+        <div class="syncrow">
+          <button class="btn" data-act="sync">${icon('sync')}歩数をもらう</button>
+          <div class="when">${syncedAt ? `最後にもらったのは<br><span class="num">${pad(syncedAt.getHours())}:${pad(syncedAt.getMinutes())}</span>` : 'まだ今日は<br>もらってないよ'}</div>
+        </div>
+        ${S.walk ? `<button class="walking-bar" data-act="go" data-id="odekake">${face('happy')}<span>おでかけ記録中（${(S.walk.dist / 1000).toFixed(2)} km）</span>${icon('next')}</button>` : ''}
+      </div>
+      <h2>モードを選ぶ</h2>
+      <div class="modes">
+        <button class="mode c1" data-act="go" data-id="simple"><span class="ic">${icon('foot')}</span><b>シンプル</b><small>目標の歩数をめざす</small></button>
+        <button class="mode c2" data-act="go" data-id="odekake"><span class="ic">${icon('map')}</span><b>おでかけ</b><small>歩いた道を地図に残す</small></button>
+        <button class="mode c3" data-act="go" data-id="sugoroku">${newSugo ? '<span class="new">NEW</span>' : ''}<span class="ic">${icon('flag')}</span><b>すごろく</b><small>${esc(TOKAIDO[sg.idx][0])}${sg.idx === 0 && !sg.lap ? 'から出発' : 'にいるよ'}</small></button>
+        <button class="mode c4" data-act="go" data-id="kisekae"><span class="ic">${icon('shirt')}</span><b>きせかえ</b><small>コイン ${fmt(coins())}枚</small></button>
+        <button class="mode wide c5" data-act="go" data-id="history"><span class="ic">${icon('cal')}</span><b>活動履歴</b><small>連続達成 ${streak()}日</small></button>
+        <button class="mode wide c6" data-act="go" data-id="settings"><span class="ic">${icon('gear')}</span><b>設定</b><small>目標・歩数の連携</small></button>
+      </div>
+    </div>`;
+  countUp(); animateRings(s / g);
+  const m = document.getElementById('hero-mascot');
+  m.onclick = () => {
+    replay(m, 'jelly'); setExpr(m, 'happy'); sfx('pop');
+    const b = document.getElementById('hero-bubble'); b.textContent = pick(TAP_LINES); replay(b, 'pop');
+    clearTimeout(m.t); m.t = setTimeout(() => setExpr(m, 'normal'), 1400);
+  };
+}
+
+// ───── シンプルモード ─────
+function simpleLine(s, g) {
+  if (Ped.on) return pick(['いっち、に！いっち、に！', 'てくてく、いい感じ！', 'マヤもいっしょに歩いてるよ！']);
+  if (s >= g) return `${callName()}、目標クリア！えらいえらい！`;
+  if (s === 0) return 'まずは「歩数をもらう」か、「その場で数える」だよ！';
+  const left = g - s, min = Math.ceil(left / 100);   // 1分で約100歩
+  return `あと${fmt(left)}歩、だいたい${min}分のお散歩でクリア！`;
+}
+function renderSimple() {
+  const k = todayKey(), s = stepsOf(k), g = goalOf(k);
+  const days7 = Array.from({ length: 7 }, (_, i) => addDays(k, i - 6));
+  const max = Math.max(g * 1.15, ...days7.map(stepsOf));
+  const st = streak();
+  app.innerHTML = topbar('シンプルモード') + `
+    <div class="big-talk"><div class="bubble down pop" id="simple-bubble">${esc(simpleLine(s, g))}</div></div>
+    <div class="ring bigring">${ringSvg()}<div class="in">
+      ${mascot(s >= g ? 'happy' : 'normal', Ped.on ? 'walking' : 'breathe', 'simple-mascot')}
+      <b class="num" data-live="steps" data-count="${s}">0</b><small>/ ${fmt(g)} 歩</small>
+    </div></div>
+    <div class="stagger">
+      <div class="trio">
+        <div class="stat"><b class="num" data-live="left">${fmt(Math.max(0, g - s))}</b><span>のこり（歩）</span></div>
+        <div class="stat"><b class="num"><span data-live="km">${kmOf(s).toFixed(1)}</span><small>km</small></b><span>きょり</span></div>
+        <div class="stat"><b class="num" data-live="kcal">${fmt(kcalOf(s))}</b><span>kcal</span></div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn fit" data-act="sync">${icon('sync')}歩数をもらう</button>
+        <button class="btn fit ${Ped.on ? 'sub' : 'green'}" data-act="ped">${icon(Ped.on ? 'pause' : 'foot')}${Ped.on ? '数えるのをやめる' : 'その場で数える'}</button>
+      </div>
+      <p class="note">「その場で数える」は、このアプリを開いている間だけ歩数を数えます。閉じている間の歩数は、iPhoneのヘルスケアから「歩数をもらう」で受け取れます。</p>
+      <h2>この1週間</h2>
+      <div class="card">
+        <div class="week">
+          <div class="goal-line" style="bottom:${g / max * 92 + 18}px" title="目標"></div>
+          ${days7.map(d => {
+            const v = stepsOf(d);
+            return `<div class="col ${d === k ? 'today' : ''}"><div class="bar ${v >= goalOf(d) ? 'ok' : ''}" data-h="${v / max * 92}"></div><small>${d === k ? '今日' : WD[parseKey(d).getDay()]}</small></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card streak" style="margin-top:14px">${face(st ? 'happy' : 'normal')}<div><span class="muted">連続で目標達成</span><br><b class="num">${st}</b> 日</div></div>
+    </div>`;
+  countUp(); animateRings(s / g);
+  setTimeout(() => app.querySelectorAll('.week .bar').forEach(b => b.style.height = b.dataset.h + 'px'), 200);
+}
+
+// ───── おでかけモード ─────
+const GSI = 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png';
+const ATTR = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a> | スポット: © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+function newMap(el, center = [35.6812, 139.7671], zoom = 16) {
+  const m = L.map(el, { zoomControl: false }).setView(center, zoom);
+  L.tileLayer(GSI, { maxZoom: 18, attribution: ATTR }).addTo(m);
+  maps.push(m);
+  return m;
+}
+const hav = (a, b) => {
+  const R = 6371000, r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r;
+  const x = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+};
+const fmtDur = ms => { const m = Math.floor(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}:${pad(m % 60)}` : `${m}分`; };
+const walkElapsed = w => w.elapsed + (w.status === 'rec' ? Date.now() - w.resumeAt : 0);
+const walkSteps = w => w.steps > 0 ? w.steps : Math.round(w.dist / stride());
+
+const G = { watch: null, wake: null, map: null, trail: null, me: null, spots: null, follow: true, restShown: false, timer: null, lastFix: null, spotCache: {} };
+// 保存した時刻も残す（途中でアプリが閉じられたとき、時間を正しく計算するため）
+function persistWalk() { if (S.walk) S.walk.savedAt = Date.now(); saveSoon('walk', 3000); }
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !G.wake) { G.wake = await navigator.wakeLock.request('screen'); G.wake.addEventListener('release', () => G.wake = null); }
+    if (!on && G.wake) { await G.wake.release(); G.wake = null; }
+  } catch (e) {}
+}
+function startWatch() {
+  if (!navigator.geolocation) return toast('位置情報が使えません');
+  if (G.watch != null) return;
+  G.watch = navigator.geolocation.watchPosition(onPos,
+    err => toast(err.code === 1 ? '位置情報を許可してね（設定 ＞ プライバシー ＞ 位置情報）' : '位置情報が取れないみたい'),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+}
+function stopWatch() { if (G.watch != null) navigator.geolocation.clearWatch(G.watch); G.watch = null; }
+function onPos(p) {
+  const { latitude: lat, longitude: lng, accuracy: acc } = p.coords, t = Date.now(), here = [lat, lng];
+  G.lastFix = here;
+  if (G.me) G.me.setLatLng(here);
+  if (G.map && G.follow) G.map.panTo(here, { animate: true });
+  const w = S.walk;
+  if (!w || w.status !== 'rec' || acc > 40) return;   // 誤差の大きい位置は道のりに入れない
+  const seg = w.segs[w.segs.length - 1], last = seg[seg.length - 1];
+  if (!last) { seg.push([+lat.toFixed(6), +lng.toFixed(6), t]); w.lastMoveAt = t; }
+  else {
+    const d = hav(last, here), v = d / Math.max(1, (t - last[2]) / 1000);
+    if (d >= 8 && v < 12) {   // 8m以上動いたら記録。速すぎる（乗り物）ときは入れない
+      seg.push([+lat.toFixed(6), +lng.toFixed(6), t]);
+      w.dist += d; w.lastMoveAt = t; G.restShown = false;
+    }
+  }
+  if (G.trail) G.trail.setLatLngs(w.segs.map(sg => sg.map(q => [q[0], q[1]])));
+  updateWalkStats();
+  persistWalk();
+}
+function updateWalkStats() {
+  const w = S.walk; if (!w) return;
+  const set = (k, v) => { const el = document.getElementById('w-' + k); if (el) el.textContent = v; };
+  set('time', fmtDur(walkElapsed(w)));
+  set('dist', (w.dist / 1000).toFixed(2));
+  set('steps', fmt(walkSteps(w)));
+}
+async function walkStart() {
+  S.walk = { id: 'o' + Date.now(), start: Date.now(), status: 'rec', resumeAt: Date.now(), elapsed: 0, dist: 0, steps: 0, segs: [[]], rests: 0, lastMoveAt: Date.now() };
+  await Ped.start();   // ボタンを押したときにだけ、センサーの許可を聞ける
+  startWatch(); keepAwake(true); persistWalk();
+  sfx('pop'); toast('いってきまーす！画面はつけたままにしてね');
+  renderOdekakeControls();
+}
+function walkPause() {
+  const w = S.walk; w.elapsed = walkElapsed(w); w.status = 'pause';
+  stopWatch(); keepAwake(false); persistWalk(); renderOdekakeControls();
+}
+async function walkResume() {
+  const w = S.walk; w.status = 'rec'; w.resumeAt = Date.now(); w.segs.push([]); w.lastMoveAt = Date.now();
+  if (!Ped.on) await Ped.start();
+  startWatch(); keepAwake(true); persistWalk(); renderOdekakeControls();
+}
+async function walkFinish() {
+  const w = S.walk;
+  w.elapsed = walkElapsed(w); w.status = 'pause';
+  stopWatch(); keepAwake(false); Ped.stop();
+  const segs = w.segs.filter(s => s.length);
+  if (w.dist < 30 && walkSteps(w) < 50) {
+    S.walk = null; await dbSet('walk', null);
+    toast('ほとんど歩いてないから、記録はしなかったよ'); return go('home');
+  }
+  const o = { id: w.id, start: w.start, end: Date.now(), dur: w.elapsed, dist: Math.round(w.dist), steps: walkSteps(w), segs, rests: w.rests };
+  S.outings.unshift(o); S.walk = null;
+  await dbSet('outings', S.outings); await dbSet('walk', null);
+  sfx('fanfare'); confetti();
+  popCard(`${mascot('happy')}<h3>おかえりなさい！</h3>
+    <p><b class="num">${(o.dist / 1000).toFixed(2)}</b> km ・ <b class="num">${fmtDur(o.dur)}</b> ・ 約<b class="num">${fmt(o.steps)}</b>歩<br>「活動履歴」で道のりを見返せるよ</p>`,
+    () => { S.outingId = o.id; go('outing'); });
+}
+function renderOdekake() {
+  document.body.classList.add('mapmode');
+  app.innerHTML = `
+    <div class="mapscreen">
+      <div id="map"></div>
+      <div class="mtop">
+        <button class="round" data-act="go" data-id="home" aria-label="戻る">${icon('back')}</button>
+        <div class="wstats">
+          <div><b class="num" id="w-time">0分</b><span>時間</span></div>
+          <div><b class="num" id="w-dist">0.00</b><span>km</span></div>
+          <div><b class="num" id="w-steps">0</b><span>歩</span></div>
+        </div>
+      </div>
+      <div class="mside">
+        <button class="round" data-act="locate" aria-label="現在地">${icon('target')}</button>
+        <button class="round" data-act="spots" aria-label="近くのスポット">${icon('search')}</button>
+      </div>
+      <div class="mbottom"><div id="restbar"></div><div id="wctl"></div></div>
+    </div>`;
+  const center = G.lastFix || S.walk?.segs.flat().slice(-1)[0] || [35.6812, 139.7671];
+  const m = G.map = newMap(document.getElementById('map'), [center[0], center[1]], 16);
+  m.on('dragstart', () => { G.follow = false; document.querySelector('[data-act="locate"]')?.classList.remove('on'); });
+  m.on('remove', () => { G.map = G.trail = G.me = G.spots = null; });
+  G.trail = L.polyline((S.walk?.segs || []).map(sg => sg.map(q => [q[0], q[1]])), { color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e07b22', weight: 6, opacity: .85, lineCap: 'round' }).addTo(m);
+  G.me = L.marker([center[0], center[1]], { icon: L.divIcon({ className: '', html: `<div class="me-pin">${face('normal', '')}</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }), zIndexOffset: 2000 }).addTo(m);
+  G.spots = L.layerGroup().addTo(m);
+  G.follow = true;
+  document.querySelector('[data-act="locate"]').classList.add('on');
+  if (!S.walk || S.walk.status !== 'rec') {
+    navigator.geolocation?.getCurrentPosition(p => {
+      G.lastFix = [p.coords.latitude, p.coords.longitude];
+      if (G.me) G.me.setLatLng(G.lastFix);
+      if (G.map) G.map.setView(G.lastFix, 16);
+    }, () => {}, { enableHighAccuracy: true, timeout: 10000 });
+  } else startWatch();
+  if (S.walk?.status === 'rec') keepAwake(true);
+  renderOdekakeControls();
+  updateWalkStats();
+  clearInterval(G.timer);
+  G.timer = setInterval(() => {
+    if (!S.walk) return;
+    updateWalkStats();
+    // 90秒ほとんど動かなかったら、休憩中とみなしてスポットを提案する
+    if (S.screen === 'odekake' && S.walk.status === 'rec' && !G.restShown && Date.now() - S.walk.lastMoveAt > 90000) {
+      G.restShown = true; S.walk.rests++; suggestRest(true);
+    }
+  }, 5000);
+}
+function renderOdekakeControls() {
+  const box = document.getElementById('wctl'); if (!box) return;
+  const w = S.walk;
+  box.innerHTML = !w ? `<button class="btn green block" data-act="w-start">${icon('play')}おでかけスタート</button>`
+    : w.status === 'rec' ? `<div class="row"><button class="btn sub" data-act="w-rest">${icon('coffee')}休憩する</button><button class="btn sub" data-act="w-pause">${icon('pause')}一時停止</button></div>`
+    : `<div class="row"><button class="btn green" data-act="w-resume">${icon('play')}再開</button><button class="btn" data-act="w-finish">${icon('stop')}おしまい</button></div>`;
+  updateWalkStats();
+}
+
+// ───── 休憩スポットの提案（OpenStreetMap のデータを Overpass API で検索）─────
+const SPOT_KINDS = {
+  cafe: { name: 'カフェ', ic: 'coffee', c: '#a8561a', line: n => `ひと休みに「${n}」はどう？` },
+  sweets: { name: 'スイーツ', ic: 'ice', c: '#e06d8a', line: n => `甘いもの食べたいな〜。「${n}」があるよ！` },
+  bakery: { name: 'パン屋さん', ic: 'bread', c: '#c9902a', line: n => `パンのいい匂いがしそう！「${n}」` },
+  park: { name: '公園', ic: 'tree', c: '#5a9a48', line: n => `「${n}」でのんびりしよっか` },
+  shrine: { name: '神社', ic: 'torii', c: '#e8613c', line: n => `「${n}」にお参りしていこ！` },
+  temple: { name: 'お寺', ic: 'torii', c: '#8a5a3b', line: n => `「${n}」で落ち着こうよ` },
+  view: { name: '景色', ic: 'mount', c: '#2f86b0', line: n => `「${n}」は景色がいいんだって！` },
+  museum: { name: '見どころ', ic: 'museum', c: '#6c6aa8', line: n => `「${n}」、ちょっと寄ってみる？` },
+};
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+function kindOf(t) {
+  if (t.amenity === 'cafe') return 'cafe';
+  if (t.amenity === 'ice_cream' || t.shop === 'confectionery' || t.shop === 'pastry') return 'sweets';
+  if (t.shop === 'bakery') return 'bakery';
+  if (t.leisure === 'park' || t.leisure === 'garden') return 'park';
+  if (t.amenity === 'place_of_worship') return t.religion === 'shinto' ? 'shrine' : t.religion === 'buddhist' ? 'temple' : null;
+  if (t.tourism === 'viewpoint') return 'view';
+  if (t.tourism === 'museum' || t.tourism === 'gallery' || t.tourism === 'attraction' || t.historic) return 'museum';
+  return null;
+}
+async function findSpots(lat, lng) {
+  const ck = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  if (G.spotCache[ck]) return G.spotCache[ck];
+  const a = `(around:700,${lat.toFixed(5)},${lng.toFixed(5)})`;
+  const q = `[out:json][timeout:12];(
+    nwr${a}[amenity~"^(cafe|ice_cream|place_of_worship)$"][name];
+    nwr${a}[shop~"^(bakery|confectionery|pastry)$"][name];
+    nwr${a}[leisure~"^(park|garden)$"][name];
+    nwr${a}[tourism~"^(viewpoint|museum|gallery|attraction)$"][name];
+    nwr${a}[historic~"^(castle|ruins|monument|city_gate|archaeological_site)$"][name];
+  );out center 120;`;
+  let json = null, lastErr = null;
+  for (const url of OVERPASS) {
+    try {
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 12000);   // 混んでいるサーバーは12秒であきらめて次へ
+      const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
+      clearTimeout(tm);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      json = await r.json(); break;
+    } catch (e) { lastErr = e; }
+  }
+  if (!json) throw lastErr || new Error('検索できませんでした');
+  const seen = new Set(), list = [];
+  for (const el of json.elements) {
+    const t = el.tags || {}, kind = kindOf(t), la = el.lat ?? el.center?.lat, lo = el.lon ?? el.center?.lon;
+    if (!kind || la == null || !t.name || seen.has(t.name)) continue;
+    seen.add(t.name);
+    list.push({ name: t.name, kind, lat: la, lng: lo, dist: hav([lat, lng], [la, lo]) });
+  }
+  list.sort((x, y) => x.dist - y.dist);
+  // いろいろな種類が出るように、まず種類ごとにいちばん近いものを選んでから、
+  // 1種類3件までの範囲で残りを近い順に足す
+  const out = [], cnt = {};
+  for (const s of list) if (!cnt[s.kind]) { cnt[s.kind] = 1; out.push(s); }
+  for (const s of list) if (out.length < 14 && !out.includes(s) && cnt[s.kind] < 3) { cnt[s.kind]++; out.push(s); }
+  out.sort((x, y) => x.dist - y.dist);
+  return G.spotCache[ck] = out;
+}
+const walkMin = m => Math.max(1, Math.round(m / 80));   // 歩く速さ 分速80m
+function showSpotPins(list) {
+  if (!G.spots) return;
+  G.spots.clearLayers();
+  list.forEach(s => {
+    const k = SPOT_KINDS[s.kind];
+    const mk = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: '', html: `<div class="spot-pin" style="--c:${k.c}">${icon(k.ic)}</div>`, iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -14] }) });
+    mk.bindPopup(`<b>${esc(s.name)}</b><div class="pop-sub">${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</div>`);
+    mk.spot = s;
+    G.spots.addLayer(mk);
+  });
+}
+async function suggestRest(auto) {
+  const bar = document.getElementById('restbar'); if (!bar) return;
+  const here = G.lastFix || S.walk?.segs.flat().slice(-1)[0];
+  if (!here) return toast('現在地がまだわからないよ');
+  bar.innerHTML = `<div class="restbar pop">${mascot('normal', 'breathe')}<div class="t">${auto ? 'ちょっと休憩中かな？' : '休憩しよっか！'}<small>近くのスポットをさがしてるよ…</small></div></div>`;
+  try {
+    const list = await findSpots(here[0], here[1]);
+    showSpotPins(list);
+    if (!list.length) { bar.innerHTML = `<div class="restbar">${mascot('normal')}<div class="t">近くにスポットが見つからなかったよ<small>少し休んだら、また歩こうね</small></div><div class="acts"><button class="btn sub small" data-act="rest-close">とじる</button></div></div>`; return; }
+    const top = list[0], k = SPOT_KINDS[top.kind];
+    bar.innerHTML = `<div class="restbar pop">${mascot('happy', '', 'rest-mascot')}<div class="t">${esc(k.line(top.name))}<small>${k.name} ・ 歩いて約${walkMin(top.dist)}分</small></div>
+      <div class="acts"><button class="btn small" data-act="spots-list">ほかも</button><button class="btn sub small" data-act="rest-close">とじる</button></div></div>`;
+    sfx('pop');
+    setTimeout(() => setExpr(document.getElementById('rest-mascot'), 'normal'), 1400);
+  } catch (e) {
+    bar.innerHTML = `<div class="restbar">${mascot('normal')}<div class="t">スポットを探せなかったよ<small>電波のいいところで、虫めがねのボタンを押してね</small></div><div class="acts"><button class="btn sub small" data-act="rest-close">とじる</button></div></div>`;
+  }
+}
+async function openSpotList() {
+  const here = G.lastFix || S.walk?.segs.flat().slice(-1)[0];
+  if (!here) return toast('現在地がまだわからないよ');
+  const sh = openSheet('近くのスポット', '<p class="muted">さがしてるよ…</p>');
+  try {
+    const list = await findSpots(here[0], here[1]);
+    showSpotPins(list);
+    sh.el.innerHTML = list.length ? list.map((s, i) => { const k = SPOT_KINDS[s.kind];
+      return `<button class="spot" data-i="${i}"><span class="ic" style="--c:${k.c}">${icon(k.ic)}</span><span class="t"><b>${esc(s.name)}</b><small>${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</small></span>${icon('next')}</button>`; }).join('')
+      + '<p class="note">スポットの情報：© OpenStreetMap contributors（営業時間などは現地で確かめてね）</p>'
+      : '<p>近くにスポットが見つからなかったよ。</p>';
+    sh.el.querySelectorAll('.spot').forEach(b => b.onclick = () => {
+      const s = list[+b.dataset.i]; sh.close();
+      if (!G.map) return;
+      G.follow = false; document.querySelector('[data-act="locate"]')?.classList.remove('on');
+      G.map.setView([s.lat, s.lng], 17);
+      G.spots.eachLayer(mk => { if (mk.spot === s) mk.openPopup(); });
+    });
+  } catch (e) { sh.el.innerHTML = '<p>スポットを探せなかったよ。電波のいいところでもう一度ためしてね。</p>'; }
+}
+
+// ───── 活動履歴 ─────
+function trackSvg(segs) {
+  const pts = segs.flat();
+  if (pts.length < 2) return '';
+  const cos = Math.cos(pts[0][0] * Math.PI / 180);
+  const xs = pts.map(p => p[1] * cos), ys = pts.map(p => -p[0]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const span = Math.max(maxX - minX, maxY - minY) || 1e-6, sc = 80 / span;
+  const ox = (100 - (maxX - minX) * sc) / 2, oy = (100 - (maxY - minY) * sc) / 2;
+  const P = p => `${(ox + (p[1] * cos - minX) * sc).toFixed(1)},${(oy + (-p[0] - minY) * sc).toFixed(1)}`;
+  const lines = segs.filter(s => s.length > 1).map(s => `<polyline points="${s.map(P).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
+  const a = pts[0], b = pts[pts.length - 1];
+  return `<svg viewBox="0 0 100 100">${lines}<circle cx="${P(a).split(',')[0]}" cy="${P(a).split(',')[1]}" r="5" fill="var(--negi)" stroke="#fff" stroke-width="2"/><circle cx="${P(b).split(',')[0]}" cy="${P(b).split(',')[1]}" r="5" fill="var(--pink)" stroke="#fff" stroke-width="2"/></svg>`;
+}
+const fmtDate = ts => { const d = new Date(ts); return `${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+function renderHistory() {
+  const h = S.hist;
+  if (!h.ym) h.ym = todayKey().slice(0, 7);
+  const tabs = `<div class="seg2" style="margin-bottom:16px"><button class="pill ${h.tab === 'cal' ? 'on' : ''}" data-act="htab" data-id="cal">${icon('cal')}カレンダー</button><button class="pill ${h.tab === 'out' ? 'on' : ''}" data-act="htab" data-id="out">${icon('map')}おでかけ</button></div>`;
+  let body = '';
+  if (h.tab === 'cal') {
+    const [y, mo] = h.ym.split('-').map(Number), first = new Date(y, mo - 1, 1), n = new Date(y, mo, 0).getDate(), tk = todayKey();
+    const keys = Array.from({ length: n }, (_, i) => `${h.ym}-${pad(i + 1)}`);
+    const past = keys.filter(k => k <= tk && S.days[k]);
+    const total = past.reduce((a, k) => a + stepsOf(k), 0), okDays = past.filter(k => stepsOf(k) >= goalOf(k)).length;
+    body = `
+      <div class="card">
+        <div class="cal-h"><button class="round" data-act="ym" data-id="-1" aria-label="前の月">${icon('back')}</button><b class="num">${y}年${mo}月</b><button class="round" data-act="ym" data-id="1" aria-label="次の月" ${h.ym >= tk.slice(0, 7) ? 'disabled style="opacity:.3"' : ''}>${icon('next')}</button></div>
+        <div class="cal">${WD.map(w => `<div class="wd">${w}</div>`).join('')}
+          ${'<div class="d blank"></div>'.repeat(first.getDay())}
+          ${keys.map((k, i) => { const v = stepsOf(k), ok = S.days[k] && v >= goalOf(k);
+            return `<button class="d ${ok ? 'ok' : ''} ${k === tk ? 'today' : ''} ${k > tk ? 'future' : ''}" data-act="day" data-id="${k}"><span class="n">${i + 1}</span>${ok ? face('happy', '') : ''}<span class="s num">${v ? fmt(v) : ''}</span></button>`; }).join('')}
+        </div>
+      </div>
+      <div class="trio">
+        <div class="stat"><b class="num" data-count="${total}">0</b><span>今月の合計</span></div>
+        <div class="stat"><b class="num" data-count="${past.length ? total / past.length : 0}">0</b><span>1日の平均</span></div>
+        <div class="stat"><b class="num" data-count="${okDays}">0</b><span>達成した日</span></div>
+      </div>
+      <p class="note">日付を押すと、その日の歩数を直せます。マヤの顔は目標を達成した日。</p>`;
+  } else {
+    body = S.outings.length ? `<div class="stagger">${S.outings.map(o => `
+      <button class="outing" data-act="outing" data-id="${o.id}"><span class="thumb">${trackSvg(o.segs)}</span>
+        <span class="t"><b>${fmtDate(o.start)}</b><span class="minis"><span><span class="num">${(o.dist / 1000).toFixed(2)}</span> km</span><span><span class="num">${fmtDur(o.dur)}</span></span><span>約<span class="num">${fmt(o.steps)}</span>歩</span></span></span>${icon('next')}</button>`).join('')}</div>`
+      : `<div class="empty">${mascot('normal', 'breathe')}<p>まだおでかけの記録がないよ。<br>「おでかけ」モードで歩いてみよ！</p><button class="btn green" data-act="go" data-id="odekake">${icon('map')}おでかけする</button></div>`;
+  }
+  app.innerHTML = topbar('活動履歴', 'home', face('normal')) + tabs + body;
+  countUp();
+}
+function openDayEdit(k) {
+  const d = parseKey(k), v = stepsOf(k);
+  const sh = openSheet(`${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）`, `
+    <div class="trio" style="margin-top:0">
+      <div class="stat"><b class="num">${fmt(v)}</b><span>歩</span></div>
+      <div class="stat"><b class="num">${kmOf(v).toFixed(1)}<small>km</small></b><span>きょり</span></div>
+      <div class="stat"><b class="num">${fmt(kcalOf(v))}</b><span>kcal</span></div>
+    </div>
+    <label class="f" for="day-steps">歩数を直す</label>
+    <input id="day-steps" type="number" inputmode="numeric" min="0" max="200000" value="${v}">
+    <button class="btn block" style="margin-top:14px" id="day-save">${icon('check')}保存</button>`);
+  sh.el.querySelector('#day-save').onclick = async () => {
+    const n = Math.round(+sh.el.querySelector('#day-steps').value);
+    if (!(n >= 0 && n < 300000)) return toast('0〜300,000の数字にしてね');
+    const dd = day(k); dd.h = n; dd.l = 0;
+    await dbSet('days', S.days); sh.close(); render('none');
+    if (k === todayKey()) celebrateIfDone();
+  };
+}
+function renderOuting() {
+  const o = S.outings.find(x => x.id === S.outingId);
+  if (!o) { S.screen = 'history'; return renderHistory(); }
+  document.body.classList.add('mapmode');
+  app.innerHTML = `
+    <div class="mapscreen">
+      <div id="map"></div>
+      <div class="mtop">
+        <button class="round" data-act="go" data-id="history" aria-label="戻る">${icon('back')}</button>
+        <div class="wstats">
+          <div><b class="num">${fmtDur(o.dur)}</b><span>時間</span></div>
+          <div><b class="num">${(o.dist / 1000).toFixed(2)}</b><span>km</span></div>
+          <div><b class="num">${fmt(o.steps)}</b><span>歩</span></div>
+        </div>
+      </div>
+      <div class="mbottom">
+        <div class="restbar">${face('happy', 'mascot')}<div class="t">${fmtDate(o.start)}<small>${o.rests ? `休憩${o.rests}回 ・ ` : ''}みどりがスタート、マヤのところがゴール</small></div>
+        <div class="acts"><button class="btn danger small" data-act="del-outing">${icon('trash')}消す</button></div></div>
+      </div>
+    </div>`;
+  const pts = o.segs.flat();
+  const m = newMap(document.getElementById('map'), pts[0] ? [pts[0][0], pts[0][1]] : undefined, 16);
+  const ac = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e07b22';
+  const line = L.polyline(o.segs.map(s => s.map(q => [q[0], q[1]])), { color: ac, weight: 6, opacity: .9, lineCap: 'round' }).addTo(m);
+  if (pts.length) {
+    const dot = c => L.divIcon({ className: '', html: `<div class="st-pin on" style="background:${c};box-shadow:0 0 0 2px ${c}"></div>`, iconSize: [14, 14], iconAnchor: [7, 7] });
+    L.marker([pts[0][0], pts[0][1]], { icon: dot('#6fa35f') }).addTo(m);
+    const b = pts[pts.length - 1];
+    L.marker([b[0], b[1]], { icon: L.divIcon({ className: '', html: `<div class="me-pin">${face('happy', '')}</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(m);
+    if (pts.length > 1) m.fitBounds(line.getBounds(), { padding: [70, 70] });
+  }
+}
+
+// ───── すごろく ─────
+function renderSugoroku() {
+  const sg = sugoState(), cur = TOKAIDO[sg.idx], next = sg.next;
+  const leftKm = next ? next[1] - sg.pos : 0, leftSteps = leftKm * 1000 / stride();
+  const got = i => sg.lap > 0 || i <= sg.idx;
+  // 足元の3地点：いまの宿場・次の宿場・その次（ウェイポイントホップは「主要な2〜3地点だけ」にするのがコツ）
+  const wps = [sg.idx, sg.idx + 1, sg.idx + 2].filter(i => i < TOKAIDO.length);
+  const xs = wps.map((_, i) => 8 + i * (84 / Math.max(1, wps.length - 1)));
+  const runnerX = next ? xs[0] + (xs[1] - xs[0]) * sg.frac : xs[0];
+  app.innerHTML = topbar('東海道すごろく', 'home', coinBox()) + `
+    <div class="stagger">
+      <div class="card sugo-card">
+        <div class="where">${face('happy')}<div class="t"><span class="muted">${sg.lap ? `<span class="chip lap">${sg.lap + 1}周目</span> ` : ''}いまいるところ</span><b>${esc(cur[0])}${sg.idx && sg.idx < TOKAIDO.length - 1 ? '宿' : ''}</b></div>
+          <div style="text-align:right"><span class="muted">日本橋から</span><br><b class="num" style="font-size:22px" data-count="${sg.pos}" data-dec="1">0</b> km</div></div>
+        <div class="hoptrack" id="hoptrack">
+          <div class="ln"><i style="width:${runnerX}%"></i></div>
+          ${wps.map((i, j) => `<div class="wp ${got(i) ? 'on' : ''}" style="left:${xs[j]}%"></div><div class="wpl" style="left:${xs[j]}%">${esc(TOKAIDO[i][0])}</div>`).join('')}
+          <div class="runner" id="runner" style="left:${runnerX}%">${mascot('normal', '', 'runner-m')}</div>
+        </div>
+        ${next ? `<p style="margin:12px 0 0">次の<b>${esc(next[0])}</b>まで あと <b class="num">${leftKm.toFixed(1)}</b> km（約<b class="num">${fmt(leftSteps)}</b>歩）</p>
+          <div class="prog"><i data-w="${sg.frac * 100}"></i></div>` : '<p>ゴール！</p>'}
+      </div>
+      <h2>道のり</h2>
+      <div class="sugomap" id="sugomap"></div>
+      <h2>宿場スタンプ（${sg.lap ? TOKAIDO.length : sg.idx + 1} / ${TOKAIDO.length}）</h2>
+      <div class="card"><div class="stamps">${TOKAIDO.map((s, i) => `<button class="stamp ${got(i) ? 'got' : ''} ${i === sg.idx ? 'cur' : ''}" data-act="stamp" data-id="${i}">${got(i) ? esc(s[0]) : i}</button>`).join('')}</div></div>
+      <p class="note">${S.set.sugoStart ? `${parseKey(S.set.sugoStart).getMonth() + 1}月${parseKey(S.set.sugoStart).getDate()}日` : '今日'}からの歩数（合計 ${fmt(sg.steps)}歩）で進みます。1歩 = ${Math.round(stride() * 100)}cm（設定の身長から計算）。宿場に着くとコイン+3枚！</p>
+    </div>`;
+  countUp();
+  setTimeout(() => app.querySelectorAll('.prog i[data-w]').forEach(i => i.style.width = i.dataset.w + '%'), 250);
+  // 地図：東海道のルート、たどり着いたところまでをメインの色で
+  const m = newMap(document.getElementById('sugomap'), [cur[2], cur[3]], 8);
+  const ac = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e07b22';
+  const route = TOKAIDO.map(s => [s[2], s[3]]);
+  L.polyline(route, { color: '#bcae9e', weight: 4, dashArray: '2 8', lineCap: 'round' }).addTo(m);
+  const here = next ? [cur[2] + (next[2] - cur[2]) * sg.frac, cur[3] + (next[3] - cur[3]) * sg.frac] : [cur[2], cur[3]];
+  L.polyline(sg.lap ? route : [...route.slice(0, sg.idx + 1), here], { color: ac, weight: 6, lineCap: 'round' }).addTo(m);
+  TOKAIDO.forEach((s, i) => {
+    const last = i === TOKAIDO.length - 1;
+    const mk = L.marker([s[2], s[3]], { icon: L.divIcon({ className: '', html: `<div class="st-pin ${got(i) ? 'on' : ''} ${last ? 'goal' : ''}"></div>`, iconSize: last ? [20, 20] : [14, 14], iconAnchor: last ? [10, 10] : [7, 7] }) }).addTo(m);
+    mk.bindPopup(`<b>${esc(s[0])}</b><div class="pop-sub">日本橋から ${s[1]} km</div>${got(i) ? esc(s[4]) : 'まだ着いてないよ'}`);
+  });
+  L.marker(here, { icon: L.divIcon({ className: '', html: `<div class="me-pin">${face('happy', '')}</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }), zIndexOffset: 2000 }).addTo(m);
+  hopRunner(xs, runnerX);
+  // 新しく着いた宿場があればお祝い
+  if (sg.reachedTotal > S.sugo.seen) {
+    const n = sg.reachedTotal - S.sugo.seen;
+    S.sugo.seen = sg.reachedTotal; dbSet('sugo', S.sugo);
+    setTimeout(() => {
+      sfx('fanfare'); confetti();
+      popCard(`<div class="bigstamp"><small>東海道</small><b>${esc(cur[0])}</b><small>${sg.idx === TOKAIDO.length - 1 ? 'ゴール' : '到着'}</small></div>
+        <h3>${esc(cur[0])}に着いたよ！</h3><p>${esc(cur[4])}<br>${n > 1 ? `${n}宿ぶん進んで、` : ''}コイン<b class="num">+${n * 3}</b>枚！</p>`);
+    }, 900);
+  }
+}
+// ウェイポイントホップ：いまの宿場からマヤの位置まで、小さく跳ねて進む
+// （1区間 250ms ＋ 着地 50ms、高さ -24px、着地で scaleY .92。区間は最大3回）
+function hopRunner(xs, targetX) {
+  const el = document.getElementById('runner'), box = document.getElementById('hoptrack');
+  if (!el || !box || reduced()) return;
+  const W = box.clientWidth, start = xs[0];
+  const hops = Math.max(1, Math.min(3, Math.round((targetX - start) / 14)));
+  const pts = Array.from({ length: hops + 1 }, (_, i) => start + (targetX - start) * i / hops);
+  const HOP = 250, LAND = 50, T0 = 300, total = T0 + hops * (HOP + LAND) + 120;
+  const outCubic = q => 1 - Math.pow(1 - q, 3);
+  const t0 = performance.now();
+  el.style.left = start + '%';
+  const frame = now => {
+    const t = now - t0;
+    let x = start, y = 0, sy = 1;
+    for (let i = 0; i < hops; i++) {
+      const s0 = T0 + i * (HOP + LAND);
+      if (t < s0) break;
+      const q = Math.min(1, (t - s0) / HOP);
+      x = pts[i] + (pts[i + 1] - pts[i]) * outCubic(q);
+      y = -24 * Math.sin(Math.PI * q);
+      if (q >= 1) { const lq = Math.min(1, (t - s0 - HOP) / 120); sy = 1 - 0.08 * Math.sin(Math.PI * lq); }
+    }
+    el.style.left = x + '%';
+    el.style.transform = `translateY(${y}px) scale(${1 / sy}, ${sy})`;
+    if (t < total) requestAnimationFrame(frame);
+    else { el.style.left = targetX + '%'; el.style.transform = ''; }
+  };
+  requestAnimationFrame(frame);
+}
+function openStamp(i) {
+  const s = TOKAIDO[i], sg = sugoState(), got = sg.lap > 0 || i <= sg.idx;
+  const sh = openSheet(esc(s[0]), got
+    ? `<div class="bigstamp"><small>東海道</small><b>${esc(s[0])}</b><small>${i === 0 ? '出発' : i === TOKAIDO.length - 1 ? 'ゴール' : `${i}番目`}</small></div><p style="text-align:center">${esc(s[4])}</p><p class="note" style="text-align:center">日本橋から ${s[1]} km</p>`
+    : `<p>まだ着いていないよ。日本橋から ${s[1]} km、あと <b class="num">${(s[1] - sg.pos).toFixed(1)}</b> km！</p>`);
+  void sh;
+}
+
+// ───── きせかえ ─────
+function itemLocked(it) { return it.lock === 'kyoto' && sugoState().lap < 1; }
+function renderKisekae() {
+  const k = S.kise, wear = { ...S.wallet.wear };
+  if (k.try) wear[ITEMS.find(i => i.id === k.try).slot] = k.try;
+  const items = ITEMS.filter(i => i.slot === k.slot);
+  const tryIt = k.try && ITEMS.find(i => i.id === k.try);
+  const owned = id => S.wallet.owned.includes(id);
+  let action = '';
+  if (tryIt) {
+    const worn = S.wallet.wear[tryIt.slot] === tryIt.id;
+    action = itemLocked(tryIt) ? `<button class="btn block" disabled>京都に着いたらもらえるよ</button>`
+      : owned(tryIt.id) || !tryIt.price ? `<button class="btn block" data-act="wear" data-id="${tryIt.id}">${worn ? 'はずす' : `${icon('check')}つける`}</button>`
+      : `<button class="btn block" data-act="buy" data-id="${tryIt.id}" ${coins() < tryIt.price ? 'disabled' : ''}><span class="coin"></span>${tryIt.price}枚で買う</button>`;
+  }
+  app.innerHTML = topbar('きせかえ', 'home', coinBox('coin-top')) + `
+    <div class="dress">
+      <!-- data-expr を normal 以外にして、まばたきで試着中の小物が消えないようにする -->
+      <div class="stage"><div class="mascot breathe" id="dress-m" data-expr="dress">${spriteSvg('normal', false, wear)}</div></div>
+      <div class="side">
+        <div class="bubble left pop" id="dress-bubble">${esc(tryIt ? `${tryIt.name}、${owned(tryIt.id) || !tryIt.price ? 'どうかな？' : '似合うかな？'}` : '小物をえらんで、ためしてみてね！')}</div>
+        <div style="margin-top:12px">${action}</div>
+      </div>
+    </div>
+    <div class="seg3" style="margin:20px 0 14px">${SLOTS.map(([id, name]) => `<button class="pill ${k.slot === id ? 'on' : ''}" data-act="slot" data-id="${id}">${name}</button>`).join('')}</div>
+    <div class="items">${items.map(it => {
+      const worn = S.wallet.wear[it.slot] === it.id, lock = itemLocked(it);
+      return `<button class="item ${k.try === it.id ? 'sel' : ''} ${lock ? 'lock' : ''}" data-act="try" data-id="${it.id}">
+        ${worn ? '<span class="chip badge">つけてる</span>' : ''}
+        ${face('normal', 'mascot', { [it.slot]: it.id })}
+        <b>${esc(it.name)}</b>
+        <small>${lock ? '京都で' : owned(it.id) || !it.price ? '持ってる' : `<span class="coin"></span>${it.price}`}</small></button>`;
+    }).join('')}</div>
+    <p class="note" style="margin-top:16px">コインは 1,000歩ごとに1枚、目標達成の日は+5枚、すごろくで宿場に着くと+3枚もらえます。</p>`;
+}
+async function buyItem(id) {
+  const it = ITEMS.find(i => i.id === id);
+  if (coins() < it.price) return toast('コインが足りないよ');
+  S.wallet.spent += it.price; S.wallet.owned.push(id); S.wallet.wear[it.slot] = id;
+  await dbSet('wallet', S.wallet);
+  sfx('coin'); render('none');
+  replay(document.getElementById('coin-top'), 'spin');
+  replay(document.getElementById('dress-m'), 'hop');
+  const b = document.getElementById('dress-bubble'); if (b) b.textContent = `わーい！${it.name}、ありがとう！`;
+}
+
+// ───── 設定 ─────
+function renderSettings() {
+  const st = S.set, theme = getPref('teku-theme', 'auto'), color = getPref('teku-color', 'mikan');
+  const COLORS = [['mikan', 'みかん', '#e07b22'], ['sakura', 'さくら', '#d9607a'], ['sora', 'そら', '#2f86b0'], ['wakaba', 'わかば', '#5a9a48']];
+  app.innerHTML = topbar('設定', 'home', face('normal')) + `
+    <div class="stagger">
+      <div class="card">
+        <label class="f" for="s-name" style="margin-top:0">マヤからの呼ばれ方</label>
+        <input id="s-name" maxlength="12" placeholder="トレーナー" value="${esc(st.name)}">
+        <p class="note">家族それぞれのiPhoneで、自分の名前にしてね（「${esc(callName())}」と呼ばれます）。</p>
+        <label class="f">1日の目標歩数</label>
+        <div class="seg4">${[4000, 6000, 8000, 10000].map(g => `<button class="pill ${st.goal === g ? 'on' : ''}" data-act="goal" data-id="${g}"><span class="num">${fmt(g)}</span></button>`).join('')}</div>
+        <input id="s-goal" type="number" inputmode="numeric" min="500" max="50000" step="500" value="${st.goal}" style="margin-top:10px">
+        <div class="seg2" style="margin-top:4px">
+          <div><label class="f" for="s-height">身長（cm）</label><input id="s-height" type="number" inputmode="numeric" min="90" max="220" value="${st.height}"></div>
+          <div><label class="f" for="s-weight">体重（kg）</label><input id="s-weight" type="number" inputmode="numeric" min="15" max="200" value="${st.weight}"></div>
+        </div>
+        <p class="note">身長から歩幅（${Math.round(stride() * 100)}cm）を、体重から消費カロリーを計算します。</p>
+      </div>
+      <details class="card" style="margin-top:14px"><summary>${icon('sync')}歩数の連携（ショートカット）</summary>${GUIDE}
+        <button class="btn sub block" style="margin-top:8px" data-act="paste">${icon('clip')}手で貼り付けて受け取る</button></details>
+      <div class="card" style="margin-top:14px">
+        <label class="f" style="margin-top:0">明るさ</label>
+        <div class="seg3">${[['auto', '自動'], ['light', 'ライト'], ['dark', 'ダーク']].map(([k, l]) => `<button class="pill ${theme === k ? 'on' : ''}" data-act="theme" data-id="${k}">${l}</button>`).join('')}</div>
+        <label class="f">テーマカラー</label>
+        <div class="seg4">${COLORS.map(([k, l, c]) => `<button class="sw ${color === k ? 'on' : ''}" data-act="color" data-id="${k}" style="--c:${c}"><i></i>${l}</button>`).join('')}</div>
+        <label class="f">効果音</label>
+        <div class="seg2">${[[true, 'オン'], [false, 'オフ']].map(([v, l]) => `<button class="pill ${st.sound === v ? 'on' : ''}" data-act="sound" data-id="${v}">${l}</button>`).join('')}</div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <label class="f" for="s-sugo" style="margin-top:0">すごろくのスタート日</label>
+        <input id="s-sugo" type="date" value="${st.sugoStart}" max="${todayKey()}">
+        <p class="note">この日からの歩数で東海道を進みます。変えると、すごろくの位置とコインの数も変わります。</p>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <b>データ</b>
+        <p class="note">記録はこのiPhoneの中だけに保存されます。機種変更やSafariのデータ削除に備えて、ときどきバックアップを「ファイル」アプリに保存してください。</p>
+        <div class="row"><button class="btn sub" data-act="export">${icon('down')}書き出す</button><button class="btn sub" data-act="import">${icon('up')}読み込む</button></div>
+      </div>
+      <p class="note" style="margin-top:16px">地図：国土地理院 ／ スポット：© OpenStreetMap contributors（Overpass API）</p>
+    </div>`;
+  const num = (id, lo, hi, key) => {
+    const el = document.getElementById(id);
+    el.onchange = () => {
+      const v = Math.round(+el.value);
+      if (!(v >= lo && v <= hi)) { el.value = S.set[key]; return toast(`${lo}〜${hi}の数字にしてね`); }
+      S.set[key] = v; if (key === 'goal') day(todayKey()).g = v;
+      saveSet(); render('none');
+    };
+  };
+  num('s-goal', 500, 50000, 'goal'); num('s-height', 90, 220, 'height'); num('s-weight', 15, 200, 'weight');
+  document.getElementById('s-name').onchange = e => { S.set.name = e.target.value.trim().slice(0, 12); saveSet(); };
+  document.getElementById('s-sugo').onchange = e => { if (e.target.value) { S.set.sugoStart = e.target.value; S.sugo.seen = sugoState().reachedTotal; dbSet('sugo', S.sugo); saveSet(); } };
+}
+function getPref(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
+function setPref(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function saveSet() { setPref('teku-settings', JSON.stringify(S.set)); }
+function applyTheme() {
+  const t = getPref('teku-theme', 'auto'), c = getPref('teku-color', 'mikan'), de = document.documentElement;
+  if (t === 'auto') delete de.dataset.theme; else de.dataset.theme = t;
+  if (c === 'mikan') delete de.dataset.color; else de.dataset.color = c;
+  setTimeout(() => document.querySelector('meta[name="theme-color"]').content = getComputedStyle(de).getPropertyValue('--bg').trim(), 0);
+}
+
+// ───── バックアップ ─────
+function exportData() {
+  const data = { format: 'teku-maya/1', at: new Date().toISOString(), set: S.set, days: S.days, outings: S.outings, wallet: S.wallet, sugo: S.sugo };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const name = `てくてくマヤ_${todayKey()}.json`;
+  const file = new File([blob], name, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+document.getElementById('file-backup').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.format !== 'teku-maya/1') throw new Error('てくてくマヤのバックアップではありません');
+    // 歩数は日ごとに多い方、おでかけは記録ごとに足し合わせる
+    for (const [k, v] of Object.entries(d.days || {})) if (!S.days[k] || (v.h || 0) + (v.l || 0) > stepsOf(k)) S.days[k] = v;
+    for (const o of d.outings || []) if (!S.outings.some(x => x.id === o.id)) S.outings.push(o);
+    S.outings.sort((a, b) => b.start - a.start);
+    if (d.wallet && d.wallet.spent >= S.wallet.spent) S.wallet = d.wallet;
+    if (d.sugo) S.sugo = d.sugo;
+    if (d.set) { S.set = { ...DEFAULT_SET, ...d.set }; saveSet(); }
+    await Promise.all([dbSet('days', S.days), dbSet('outings', S.outings), dbSet('wallet', S.wallet), dbSet('sugo', S.sugo)]);
+    toast('バックアップを読み込んだよ'); render('none');
+  } catch (err) { toast(err.message); }
+});
+
+// ───── ボタンの操作 ─────
+app.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const id = b.dataset.id;
+  switch (b.dataset.act) {
+    case 'go': return go(id);
+    case 'sync': return syncSteps();
+    case 'paste': return openPasteSheet();
+    case 'ped':
+      if (Ped.on) Ped.stop(); else await Ped.start();
+      return render('none');
+    case 'w-start': return walkStart();
+    case 'w-pause': return walkPause();
+    case 'w-resume': return walkResume();
+    case 'w-finish': return walkFinish();
+    case 'w-rest': S.walk.rests++; persistWalk(); return suggestRest(false);
+    case 'rest-close': document.getElementById('restbar').innerHTML = ''; return;
+    case 'spots': case 'spots-list': return openSpotList();
+    case 'locate':
+      G.follow = true; b.classList.add('on');
+      if (G.lastFix && G.map) G.map.setView(G.lastFix, 17);
+      return;
+    case 'htab': S.hist.tab = id; return render('none');
+    case 'ym': { const [y, m] = S.hist.ym.split('-').map(Number), d = new Date(y, m - 1 + +id, 1); S.hist.ym = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; return render('none'); }
+    case 'day': return openDayEdit(id);
+    case 'outing': S.outingId = id; return go('outing');
+    case 'del-outing':
+      if (!confirm('このおでかけの記録を消しますか？（もとに戻せません）')) return;
+      S.outings = S.outings.filter(o => o.id !== S.outingId); await dbSet('outings', S.outings);
+      toast('記録を消しました'); return go('history');
+    case 'stamp': return openStamp(+id);
+    case 'slot': S.kise.slot = id; S.kise.try = null; return render('none');
+    case 'try': S.kise.try = S.kise.try === id ? null : id; render('none'); return replay(document.getElementById('dress-m'), 'jelly');
+    case 'buy': return buyItem(id);
+    case 'wear': {
+      const it = ITEMS.find(i => i.id === id);
+      if (S.wallet.wear[it.slot] === id) delete S.wallet.wear[it.slot]; else S.wallet.wear[it.slot] = id;
+      await dbSet('wallet', S.wallet); render('none'); return replay(document.getElementById('dress-m'), 'hop');
+    }
+    case 'goal': S.set.goal = +id; day(todayKey()).g = +id; saveSet(); return render('none');
+    case 'theme': setPref('teku-theme', id); applyTheme(); return render('none');
+    case 'color': setPref('teku-color', id); applyTheme(); return render('none');
+    case 'sound': S.set.sound = id === 'true'; saveSet(); return render('none');
+    case 'export': return exportData();
+    case 'import': return document.getElementById('file-backup').click();
+  }
+});
+
+// アプリに戻ってきたとき：数字を新しくし、記録中なら画面を消さない設定をかけ直す
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (S.walk?.status === 'rec') { keepAwake(true); if (G.watch == null) startWatch(); }
+  if (['home', 'simple'].includes(S.screen)) render('none');
+});
+
+// ───── 起動 ─────
+(async function boot() {
+  try { S.set = { ...DEFAULT_SET, ...JSON.parse(getPref('teku-settings', '{}')) }; } catch (e) {}
+  if (!S.set.sugoStart) { S.set.sugoStart = todayKey(); saveSet(); }
+  applyTheme();
+  try {
+    const [days, outings, wallet, sugo, walk] = await Promise.all(['days', 'outings', 'wallet', 'sugo', 'walk'].map(dbGet));
+    S.days = days || {}; S.outings = outings || []; S.wallet = { spent: 0, owned: [], wear: {}, ...wallet }; S.sugo = sugo || { seen: 0 };
+    // 途中で閉じたおでかけは、一時停止の状態で続きから
+    if (walk) { S.walk = walk; if (walk.status === 'rec') { walk.elapsed = walk.elapsed + Math.max(0, (walk.savedAt || Date.now()) - walk.resumeAt); walk.status = 'pause'; } }
+  } catch (e) { toast('保存データを読み込めませんでした'); }
+  render('fwd');
+  // URLの後ろに #steps=… が付いていたら受け取る（Safariで開いたとき用）
+  const hm = location.hash.match(/steps=([^&]+)/);
+  if (hm) { history.replaceState(null, '', location.pathname); if (await applyHealth(parseHealth(decodeURIComponent(hm[1]).replace(/;/g, '\n')))) render('none'); }
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+})();
+</script>
+</body>
+</html>
