@@ -263,6 +263,21 @@ label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:1
 .rp-maya .bubble{flex:1}
 .rp-maya .bubble small{font-size:12px}
 .spot.on{border-color:var(--accent);box-shadow:0 4px 0 var(--accent-deep)}
+/* スポットのカード：押すと地図が動く部分と、ピン・調べるボタン */
+.rp-list .spot{padding:6px 8px 6px 6px;gap:6px}
+.rp-list .spot:active{transform:none;box-shadow:0 4px 0 var(--edge)}
+.spot-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:none;text-align:left;padding:4px;color:inherit}
+.spot .mini{width:40px;height:40px;border-radius:12px;border:2px solid var(--line);background:var(--surface);color:var(--muted);display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 2px 0 var(--edge)}
+.spot .mini:active{transform:translateY(2px);box-shadow:none}
+.spot .mini.on{background:var(--sun);border-color:var(--sun-deep);color:#5a4300}
+.spot .t b .chip{font-size:10px;padding:1px 6px;background:var(--sun);color:#5a4300;vertical-align:2px}
+.spot-pin{position:relative}
+.spot-pin.pinned{width:40px;height:40px;border:3px solid var(--sun);box-shadow:0 0 0 3px rgba(255,214,92,.45),0 2px 0 rgba(0,0,0,.25)}
+.spot-pin.pinned .i{width:20px;height:20px}
+.pin-star{position:absolute;top:-9px;right:-9px;width:20px;height:20px;border-radius:50%;background:var(--sun);color:#5a4300;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.pin-star .i{width:12px!important;height:12px!important;fill:currentColor}
+.leaflet-popup-content .pop-acts{display:flex;gap:6px;margin-top:8px}
+.leaflet-popup-content .pop-acts .btn{margin:0;width:auto;flex:1;white-space:nowrap;min-height:36px;padding:4px 8px;font-size:13px;gap:3px;border-radius:12px}
 /* マヤとボタンは固定して、スポットの一覧だけをスクロールさせる */
 .rp-maya{flex:none}
 .rp-list{position:relative;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:4px 16px 4px}
@@ -499,6 +514,7 @@ details.card[open] summary::after{transform:rotate(-135deg)}
   <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="17" rx="2.5"/><path d="M9 4.5V3h6v1.5"/><path d="M9 11h6M9 15h4"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 3.5h4M6.5 7l1 13h9l1-13"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.5s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0c0 5-6.5 11.2-6.5 11.2z"/><circle cx="12" cy="10.2" r="2.3"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></symbol>
 </svg>
 
@@ -1374,7 +1390,7 @@ async function walkFinish() {
     S.walk = null; await dbSet('walk', null);
     toast('ほとんど歩いてないから、記録はしなかったよ'); return go('home');
   }
-  const o = { id: w.id, start: w.start, end: Date.now(), dur: w.elapsed, dist: Math.round(w.dist), steps: walkSteps(w), segs, rests: w.rests };
+  const o = { id: w.id, start: w.start, end: Date.now(), dur: w.elapsed, dist: Math.round(w.dist), steps: walkSteps(w), segs, rests: w.rests, pins: w.pins || [] };
   S.outings.unshift(o); S.walk = null;
   await dbSet('outings', S.outings); await dbSet('walk', null);
   sfx('fanfare'); confetti();
@@ -1406,6 +1422,7 @@ function renderOdekake() {
   G.trail = L.polyline((S.walk?.segs || []).map(sg => sg.map(q => [q[0], q[1]])), { color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e07b22', weight: 6, opacity: .85, lineCap: 'round' }).addTo(m);
   G.me = L.marker([center[0], center[1]], { icon: L.divIcon({ className: '', html: `<div class="me-pin">${face('normal', '')}</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }), zIndexOffset: 2000 }).addTo(m);
   G.spots = L.layerGroup().addTo(m);
+  drawSpots([]);   // これまでに刺したピン
   G.follow = true;
   document.querySelector('[data-act="locate"]').classList.add('on');
   if (!S.walk || S.walk.status !== 'rec') {
@@ -1447,7 +1464,7 @@ function setRestMode(on) {
     <div class="rp-list"><div id="spotlist"></div>
     <p class="note">地図：国土地理院 ／ スポット：© OpenStreetMap contributors（営業時間などは現地で確かめてね）</p></div>
     <div class="row rp-ctl"><button class="btn green" data-act="w-resume">${icon('play')}歩きはじめる</button><button class="btn" data-act="w-finish">${icon('stop')}おしまい</button></div>` : '';
-  if (!on && G.spots) G.spots.clearLayers();
+  if (!on) drawSpots([]);   // 休憩を終えても、ピンは地図に残す
   renderOdekakeControls();
   if (G.map) setTimeout(() => {
     G.map.invalidateSize();
@@ -1509,7 +1526,7 @@ async function findSpots(lat, lng) {
     const p = f.properties || {}, [lo, la] = f.geometry?.coordinates || [], kind = p.name && kindOf(p.osm_key, p.osm_value, p.name);
     if (!kind || la == null || seen.has(p.name)) continue;
     seen.add(p.name);
-    list.push({ name: p.name, kind, lat: la, lng: lo, dist: hav([lat, lng], [la, lo]) });
+    list.push({ name: p.name, kind, lat: la, lng: lo, area: p.city || p.district || p.locality || p.county || '', dist: hav([lat, lng], [la, lo]) });
   }
   list.sort((x, y) => x.dist - y.dist);
   // いろいろな種類が出るように、まず種類ごとにいちばん近いものを選んでから、
@@ -1521,17 +1538,71 @@ async function findSpots(lat, lng) {
   return G.spotCache[ck] = out;
 }
 const walkMin = m => Math.max(1, Math.round(m / 80));   // 歩く速さ 分速80m
-function showSpotPins(list) {
+// ───── ピン（気になったスポットを地図に残す）・Web検索 ─────
+const pinKey = s => `${s.name}@${(+s.lat).toFixed(5)},${(+s.lng).toFixed(5)}`;
+const isPinned = s => (S.walk?.pins || []).some(p => pinKey(p) === pinKey(s));
+function togglePin(s) {
+  const w = S.walk; if (!w || !s) return;
+  w.pins ||= [];
+  const i = w.pins.findIndex(p => pinKey(p) === pinKey(s));
+  if (i >= 0) { w.pins.splice(i, 1); toast('ピンを外したよ'); }
+  else { w.pins.push({ name: s.name, kind: s.kind, lat: s.lat, lng: s.lng, area: s.area || '' }); sfx('pop'); toast(`「${s.name}」にピンを刺したよ！`); }
+  persistWalk();
+  G.map?.closePopup();
+  drawSpots(G.restList || []);
+  renderSpotList();
+}
+// Googleで「スポット名＋地名」を検索する／iPhoneのマップアプリで開く（道案内に使える）
+const openWeb = s => s && window.open(`https://www.google.com/search?q=${encodeURIComponent(s.name + (s.area ? ' ' + s.area : ''))}`, '_blank', 'noopener');
+const openMaps = s => s && window.open(`https://maps.apple.com/?q=${encodeURIComponent(s.name)}&ll=${s.lat},${s.lng}`, '_blank', 'noopener');
+// 地図のピンを押したときの吹き出し（ピン・調べる・マップのボタンつき）
+function spotPopup(s, canPin) {
+  const k = SPOT_KINDS[s.kind] || SPOT_KINDS.museum, el = document.createElement('div'), on = isPinned(s);
+  el.innerHTML = `<b>${esc(s.name)}</b><div class="pop-sub">${k.name}${s.dist != null ? ` ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）` : ''}</div>
+    <div class="pop-acts">${canPin ? `<button class="btn small ${on ? 'sub' : ''}" data-p>${icon('pin')}${on ? '外す' : 'ピン'}</button>` : ''}<button class="btn sub small" data-w>${icon('search')}調べる</button><button class="btn sub small" data-m>${icon('map')}マップ</button></div>`;
+  el.querySelector('[data-p]')?.addEventListener('click', () => togglePin(s));
+  el.querySelector('[data-w]').onclick = () => openWeb(s);
+  el.querySelector('[data-m]').onclick = () => openMaps(s);
+  return el;
+}
+const pinIconHtml = (s, pinned) => {
+  const k = SPOT_KINDS[s.kind] || SPOT_KINDS.museum;
+  return L.divIcon({ className: '', html: `<div class="spot-pin ${pinned ? 'pinned' : ''}" style="--c:${k.c}">${icon(k.ic)}${pinned ? `<span class="pin-star">${icon('star')}</span>` : ''}</div>`,
+    iconSize: pinned ? [40, 40] : [32, 32], iconAnchor: pinned ? [20, 20] : [16, 16], popupAnchor: [0, -16] });
+};
+// 一覧のスポットと、ピンを刺したスポット（★つき）をまとめて地図に描く
+function drawSpots(list) {
   if (!G.spots) return;
   G.spots.clearLayers();
   list.forEach((s, i) => {
-    const k = SPOT_KINDS[s.kind];
-    const mk = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: '', html: `<div class="spot-pin" style="--c:${k.c}">${icon(k.ic)}</div>`, iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -14] }) });
-    mk.bindPopup(`<b>${esc(s.name)}</b><div class="pop-sub">${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</div>`);
+    if (isPinned(s)) return;
+    const mk = L.marker([s.lat, s.lng], { icon: pinIconHtml(s, false) });
+    mk.bindPopup(() => spotPopup(s, !!S.walk), { minWidth: 240 });
     mk.on('click', () => focusSpot(i, false));
-    mk.spot = s;
+    mk.key = pinKey(s);
     G.spots.addLayer(mk);
   });
+  (S.walk?.pins || []).forEach(p => {
+    const i = list.findIndex(x => pinKey(x) === pinKey(p)), s = i >= 0 ? list[i] : p;
+    const mk = L.marker([p.lat, p.lng], { icon: pinIconHtml(p, true), zIndexOffset: 1000 });
+    mk.bindPopup(() => spotPopup(s, !!S.walk), { minWidth: 240 });
+    if (i >= 0) mk.on('click', () => focusSpot(i, false));
+    mk.key = pinKey(p);
+    G.spots.addLayer(mk);
+  });
+}
+const showSpotPins = drawSpots;
+// 休憩画面のスポット一覧（押すと地図が動く部分＋ピン・調べるボタン）
+function renderSpotList() {
+  const box = document.getElementById('spotlist'), list = G.restList;
+  if (!box || !list?.length) return;
+  box.innerHTML = list.map((s, i) => {
+    const k = SPOT_KINDS[s.kind], on = isPinned(s);
+    return `<div class="spot ${i === G.restIdx ? 'on' : ''}">
+      <button class="spot-main" data-act="spot" data-id="${i}"><span class="ic" style="--c:${k.c}">${icon(k.ic)}</span><span class="t"><b>${on ? '<span class="chip">ピン</span> ' : ''}${esc(s.name)}</b><small>${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</small></span></button>
+      <button class="mini ${on ? 'on' : ''}" data-act="pin" data-id="${i}" aria-label="${on ? 'ピンを外す' : 'ピンを刺す'}">${icon('pin')}</button>
+      <button class="mini" data-act="web" data-id="${i}" aria-label="Webで調べる">${icon('search')}</button></div>`;
+  }).join('');
 }
 // スポットを1つ選ぶ：地図をそこへ動かし、吹き出しと一覧の色を合わせる
 function focusSpot(i, moveMap = true) {
@@ -1552,7 +1623,7 @@ function focusSpot(i, moveMap = true) {
   if (G.map && moveMap) {
     G.follow = false; document.querySelector('[data-act="locate"]')?.classList.remove('on');
     G.map.setView([s.lat, s.lng], Math.max(G.map.getZoom(), 16));
-    G.spots?.eachLayer(mk => { if (mk.spot === s) mk.openPopup(); });
+    G.spots?.eachLayer(mk => { if (mk.key === pinKey(s)) mk.openPopup(); });
   }
 }
 // 休憩画面のマヤをタップ：1回目は近くをさがし、2回目からは次のスポットをおすすめする
@@ -1572,10 +1643,7 @@ async function mayaSpot() {
     showSpotPins(list);
     const box = document.getElementById('spotlist');
     if (!list.length) { b.textContent = '近くにスポットが見つからなかったよ。少し休んだら、また歩こうね'; return; }
-    if (box) {
-      box.innerHTML = list.map((s, i) => { const k = SPOT_KINDS[s.kind];
-        return `<button class="spot" data-act="spot" data-id="${i}"><span class="ic" style="--c:${k.c}">${icon(k.ic)}</span><span class="t"><b>${esc(s.name)}</b><small>${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</small></span>${icon('next')}</button>`; }).join('');
-    }
+    renderSpotList();
     focusSpot(0);
   } catch (e) {
     b.textContent = 'うまくさがせなかったよ…。もう一度マヤをタップしてみてね';
@@ -1666,7 +1734,7 @@ function renderOuting() {
         </div>
       </div>
       <div class="mbottom">
-        <div class="restbar">${face('happy', 'mascot')}<div class="t">${fmtDate(o.start)}<small>${o.rests ? `休憩${o.rests}回 ・ ` : ''}みどりがスタート、マヤのところがゴール</small></div>
+        <div class="restbar">${face('happy', 'mascot')}<div class="t">${fmtDate(o.start)}<small>${o.rests ? `休憩${o.rests}回 ・ ` : ''}${o.pins?.length ? `ピン${o.pins.length}こ ・ ` : ''}みどりがスタート、マヤのところがゴール</small></div>
         <div class="acts"><button class="btn danger small" data-act="del-outing">${icon('trash')}消す</button></div></div>
       </div>
     </div>`;
@@ -1679,8 +1747,11 @@ function renderOuting() {
     L.marker([pts[0][0], pts[0][1]], { icon: dot('#6fa35f') }).addTo(m);
     const b = pts[pts.length - 1];
     L.marker([b[0], b[1]], { icon: L.divIcon({ className: '', html: `<div class="me-pin">${face('happy', '')}</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(m);
-    if (pts.length > 1) m.fitBounds(line.getBounds(), { padding: [70, 70] });
   }
+  // 気になって刺したピン（★）
+  (o.pins || []).forEach(p => L.marker([p.lat, p.lng], { icon: pinIconHtml(p, true), zIndexOffset: 1000 }).bindPopup(() => spotPopup(p, false), { minWidth: 200 }).addTo(m));
+  const bounds = L.latLngBounds([...pts.map(q => [q[0], q[1]]), ...(o.pins || []).map(p => [p.lat, p.lng])]);
+  if (bounds.isValid() && (pts.length > 1 || o.pins?.length)) m.fitBounds(bounds, { padding: [70, 70], maxZoom: 17 });
 }
 
 // ───── すごろく ─────
@@ -2014,6 +2085,8 @@ app.addEventListener('click', async e => {
     case 'rest-close': document.getElementById('restbar').innerHTML = ''; return;
     case 'maya-spot': return mayaSpot();
     case 'spot': return focusSpot(+id);
+    case 'pin': return togglePin(G.restList[+id]);
+    case 'web': return openWeb(G.restList[+id]);
     case 'locate':
       G.follow = true; b.classList.add('on');
       if (G.lastFix && G.map) G.map.setView(G.lastFix, 17);

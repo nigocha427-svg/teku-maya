@@ -1,5 +1,5 @@
 // アプリ本体をキャッシュして、電波が弱い場所でも起動できるようにする
-const CACHE = 'teku-maya-v8';
+const CACHE = 'teku-maya-v9';
 const SHELL = [
   './',
   'index.html',
