@@ -353,6 +353,39 @@ label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:1
 .item .badge{position:absolute;top:6px;right:6px;font-size:10px;padding:0 6px}
 .item.lock{opacity:.6}
 
+/* ───── ごほうび ───── */
+/* ホームにかざった たからもの（吹き出しの左） */
+.hero-talk{align-items:center;gap:10px}
+.hero-talk .fav{width:40px;height:40px;flex:none;display:flex;align-items:flex-end;justify-content:center}
+.hero-talk .fav svg{max-width:100%;max-height:100%}
+.lvrow{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:14px;flex-wrap:wrap}
+.lvrow .lvnext{margin-left:auto;font-size:12px;color:var(--muted);font-weight:700}
+.lvrow+.prog{height:10px;margin-top:6px}
+.nextcoin{display:flex;align-items:center;gap:12px;margin-top:18px;padding:12px 14px}
+.nextcoin .t{flex:1;font-size:14px;font-weight:700}
+.nextcoin .prog{height:10px;margin-top:6px}
+.rare{position:absolute;top:6px;left:8px;font-size:10px;font-weight:700;color:var(--sun-deep);letter-spacing:-1px}
+.item .mascot{width:46px;height:54px;margin-top:6px}
+.shelfhead{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px}
+.shelfhead .face{width:48px;height:44px}
+.shelfhead b{font-size:24px}
+.shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px;padding:12px 10px 4px;border-radius:22px;background:var(--surface);border:2px solid var(--line);box-shadow:0 5px 0 var(--edge)}
+.tr{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;padding:18px 2px 10px;border-bottom:7px solid #d9a05b;border-radius:4px;color:var(--faint);transition:transform .12s var(--out-cubic)}
+.tr:active{transform:scale(.94)}
+.tr .pic{width:52px;height:52px;display:flex;align-items:flex-end;justify-content:center}
+.tr .pic svg{max-width:100%;max-height:100%}
+.tr:not(.got) .pic{opacity:.35}
+.tr b{font-size:12px;line-height:1.3;color:var(--ink);text-align:center}
+.tr small{font-size:11px;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:3px}
+.tr small .coin,.item small .coin{width:14px;height:14px;border-width:1.5px}
+.tr small .coin::after{display:none}
+.trbig{width:130px;height:130px;margin:6px auto;display:flex;align-items:flex-end;justify-content:center;color:var(--faint)}
+.trbig svg{max-width:100%;max-height:100%}
+.trbig.shadow{opacity:.35}
+.coach{display:flex;align-items:center;gap:10px;margin:10px 0 14px}
+.coach .face{width:54px;height:50px;flex:none}
+.coach .bubble{flex:1}
+
 /* ───── 設定 ───── */
 details.card summary{font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
 details.card summary::-webkit-details-marker{display:none}
@@ -441,6 +474,7 @@ details.card[open] summary::after{transform:rotate(-135deg)}
   <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15.5V4.5M7 9l5-5 5 5M4.5 20h15"/></symbol>
   <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="17" rx="2.5"/><path d="M9 4.5V3h6v1.5"/><path d="M9 11h6M9 15h4"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 3.5h4M6.5 7l1 13h9l1-13"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></symbol>
 </svg>
 
@@ -466,35 +500,120 @@ const EXPR = {
   happy: EYES.flatMap(x => [[x, 8, 'e'], [x, 9, 'c'], [x, 10, 'g'], [x - 1, 10, 'c'], [x + 1, 10, 'c']]),
 };
 
-// ───── きせかえの小物（キャラの上に重ねるドット）─────
-// shape の1文字＝1ドット、ink で色を決める。y がマイナスなら頭の上にはみ出す
+// ───── ごほうびのアイテム ─────
+// きせかえの小物はキャラの上に重ねるドット（shape の1文字＝1ドット、ink で色）。y がマイナスなら頭の上にはみ出す。
+// behind: true の小物（はねなど）はキャラの後ろに描く。lock があるものはコインでは買えず、記念の条件でもらえる
 const ITEMS = [
-  { id: 'ribbon', slot: 'head', name: 'リボン', price: 30, x: 6, y: -1, shape: ['PP.PP', 'PPDPP', '.P.P.'], ink: { P: '#f3a5b2', D: '#d9607a' } },
-  { id: 'band', slot: 'head', name: 'ハチマキ', price: 40, x: 1, y: 5, shape: ['RRRRRRRWRRRRRRRR.', '...............RR', '................R'], ink: { R: '#e8613c', W: '#fff' } },
-  { id: 'flower', slot: 'head', name: '花かんむり', price: 60, x: 4, y: 2, shape: ['.P..Y..W..', 'PGPGYGYGWG'], ink: { P: '#f3a5b2', Y: '#ffd65c', W: '#fff', G: '#6fa35f' } },
-  { id: 'hat', slot: 'head', name: 'むぎわら帽子', price: 90, x: 2, y: -1, shape: ['....YYYYY....', '...YYYYYYY...', '...RRRRRRR...', 'YYYYYYYYYYYYY', '.DDDDDDDDDDD.'], ink: { Y: '#f2cf6b', D: '#c99a3a', R: '#e8613c' } },
-  { id: 'crown', slot: 'head', name: '王冠', price: 0, lock: 'kyoto', x: 6, y: -2, shape: ['Y.Y.Y', 'YYYYY', 'YRYBY'], ink: { Y: '#ffc93c', R: '#e8613c', B: '#4fa3e0' } },
-  { id: 'glasses', slot: 'face', name: 'サングラス', price: 70, x: 3, y: 8, shape: ['KWKKKWKKK', '.KKK.KKK.'], ink: { K: '#2d3246', W: '#9fb3d8' } },
-  { id: 'heart', slot: 'face', name: 'ハートほっぺ', price: 30, x: 3, y: 11, shape: ['H.H....H.H', '.H......H.'], ink: { H: '#f06b8a' } },
-  { id: 'scarf', slot: 'neck', name: 'マフラー', price: 50, x: 5, y: 12, shape: ['RRRRRRR', 'DRDRDRD', '.....RR', '.....RD'], ink: { R: '#e8613c', D: '#b8452a' } },
-  { id: 'bowtie', slot: 'neck', name: '蝶ネクタイ', price: 40, x: 6, y: 12, shape: ['BB.BB', 'BBKBB', 'BB.BB'], ink: { B: '#4fa3e0', K: '#2a6f9e' } },
+  // あたま
+  { id: 'ribbon', slot: 'head', name: 'リボン', price: 15, x: 6, y: -1, shape: ['PP.PP', 'PPDPP', '.P.P.'], ink: { P: '#f3a5b2', D: '#d9607a' } },
+  { id: 'band', slot: 'head', name: 'ハチマキ', price: 20, x: 1, y: 5, shape: ['RRRRRRRWRRRRRRRR.', '...............RR', '................R'], ink: { R: '#e8613c', W: '#fff' } },
+  { id: 'cap', slot: 'head', name: 'キャップ', price: 30, x: 1, y: 1, shape: ['....BBBBBBB..', '...BBWBBBBBB.', 'DDDBBBBBBBBBB'], ink: { B: '#4fa3e0', W: '#fff', D: '#2a6f9e' } },
+  { id: 'flower', slot: 'head', name: '花かんむり', price: 40, x: 4, y: 2, shape: ['.P..Y..W..', 'PGPGYGYGWG'], ink: { P: '#f3a5b2', Y: '#ffd65c', W: '#fff', G: '#6fa35f' } },
+  { id: 'beret', slot: 'head', name: 'ベレー帽', price: 40, x: 4, y: -1, shape: ['....K.....', '.PPPPPPP..', 'PPPPPPPPPP', '.PPPPPPPP.'], ink: { P: '#6c6aa8', K: '#4a4880' } },
+  { id: 'hat', slot: 'head', name: 'むぎわら帽子', price: 60, x: 2, y: -1, shape: ['....YYYYY....', '...YYYYYYY...', '...RRRRRRR...', 'YYYYYYYYYYYYY', '.DDDDDDDDDDD.'], ink: { Y: '#f2cf6b', D: '#c99a3a', R: '#e8613c' } },
+  { id: 'santa', slot: 'head', name: 'サンタ帽', price: 80, x: 4, y: -2, shape: ['........RW', '....RRRRR.', '..RRRRRRR.', 'WWWWWWWWWW'], ink: { R: '#e8413c', W: '#fff' } },
+  { id: 'crown', slot: 'head', name: '王冠', lock: 'kyoto', x: 6, y: -2, shape: ['Y.Y.Y', 'YYYYY', 'YRYBY'], ink: { Y: '#ffc93c', R: '#e8613c', B: '#4fa3e0' } },
+  { id: 'tiara', slot: 'head', name: 'ティアラ', lock: 'm500', x: 6, y: 0, shape: ['..S..', '.SPS.', 'SSSSS'], ink: { S: '#dfe6ee', P: '#f06b8a' } },
+  // かお
+  { id: 'bandage', slot: 'face', name: 'ばんそうこう', price: 10, x: 9, y: 11, shape: ['TWT'], ink: { T: '#e8b98a', W: '#f7e3c8' } },
+  { id: 'heart', slot: 'face', name: 'ハートほっぺ', price: 15, x: 3, y: 11, shape: ['H.H....H.H', '.H......H.'], ink: { H: '#f06b8a' } },
+  { id: 'star', slot: 'face', name: 'ほしシール', price: 20, x: 3, y: 10, shape: ['.Y.', 'YYY', '.Y.'], ink: { Y: '#ffd65c' } },
+  { id: 'megane', slot: 'face', name: 'まるメガネ', price: 30, x: 3, y: 7, shape: ['KKKKKKKKK', 'K...K...K', 'K...K...K', 'KKKKKKKKK'], ink: { K: '#8a5a3b' } },
+  { id: 'glasses', slot: 'face', name: 'サングラス', price: 50, x: 3, y: 8, shape: ['KWKKKWKKK', '.KKK.KKK.'], ink: { K: '#2d3246', W: '#9fb3d8' } },
+  // くび
+  { id: 'bowtie', slot: 'neck', name: '蝶ネクタイ', price: 20, x: 6, y: 12, shape: ['BB.BB', 'BBKBB', 'BB.BB'], ink: { B: '#4fa3e0', K: '#2a6f9e' } },
+  { id: 'scarf', slot: 'neck', name: 'マフラー', price: 30, x: 5, y: 12, shape: ['RRRRRRR', 'DRDRDRD', '.....RR', '.....RD'], ink: { R: '#e8613c', D: '#b8452a' } },
+  { id: 'kerchief', slot: 'neck', name: 'スカーフ', price: 40, x: 5, y: 12, shape: ['BBBBBBB', '.BWBWB.', '..BBB..', '...B...'], ink: { B: '#2f86b0', W: '#fff' } },
+  { id: 'lei', slot: 'neck', name: '花のレイ', price: 60, x: 4, y: 12, shape: ['PYPWPYPWP', '.P.....P.', '..WPYPW..'], ink: { P: '#f06b8a', Y: '#ffd65c', W: '#fff' } },
+  { id: 'medal', slot: 'neck', name: 'メダル', lock: 'streak30', x: 6, y: 12, shape: ['R...R', '.R.R.', '..Y..', '.YWY.', '..Y..'], ink: { R: '#e8613c', Y: '#ffc93c', W: '#fff7c2' } },
+  // せなか
+  { id: 'balloon', slot: 'back', name: '風船', price: 20, x: 15, y: 3, shape: ['.RR.', 'RRRR', 'RWRR', 'RRRR', '.RR.', '..K.', '..K.', '.K..', '.K..', 'K...', 'K...'], ink: { R: '#e8613c', W: '#ffb4a0', K: '#867868' } },
+  { id: 'backpack', slot: 'back', name: 'リュック', price: 60, x: 12, y: 11, shape: ['.GGG.', 'GGGGG', 'GDGDG', 'GGGGG', '.GGG.'], ink: { G: '#e07b22', D: '#a8561a' } },
+  { id: 'cape', slot: 'back', name: 'マント', price: 120, behind: true, x: 1, y: 11, shape: ['RRRRRRRRRRRRRRRR', '.RRRRRRRRRRRRRR.', '.RRRRRRRRRRRRRR.', '..RRRRRRRRRRRR..', '..RRRRRRRRRRRR..', '..DDDDDDDDDDDD..', '...DDDDDDDDDD...', '...DDDDDDDDDD...', '....DDDDDDDD....'], ink: { R: '#d9405a', D: '#a23e55' } },
+  { id: 'wings', slot: 'back', name: '天使のはね', lock: 'days365', behind: true, x: -4, y: 6, shape: ['WW......................WW', 'WWW....................WWW', 'WWWW..................WWWW', 'LWWWW................WWWWL', '.LWWWW..............WWWWL.', '..LLWW..............WWLL..', '...LL................LL...'], ink: { W: '#ffffff', L: '#cfe3f5' } },
 ];
-const SLOTS = [['head', 'あたま'], ['face', 'かお'], ['neck', 'くび']];
+const SLOTS = [['head', 'あたま'], ['face', 'かお'], ['neck', 'くび'], ['back', 'せなか']];
+
+// たからもの（棚にかざる小物）。ドット絵の書き方は きせかえ と同じ
+const rainbow = (() => {   // 虹は弧なので、中心からの距離で色の帯を決めて作る
+  const cols = 'roygbp', rows = [];
+  for (let y = 0; y < 7; y++) {
+    let r = '';
+    for (let x = 0; x < 14; x++) { const d = Math.hypot(x - 6.5, y - 7); const i = Math.floor(7.5 - d); r += d <= 7.5 && i >= 0 && i < 6 ? cols[i] : '.'; }
+    rows.push(r);
+  }
+  return rows;
+})();
+const fan = (() => {   // 扇子：かなめ（下の点）から広がる半円に、骨（金）を放射状に入れる
+  const rows = [];
+  for (let y = 0; y < 9; y++) {
+    let r = '';
+    for (let x = 0; x < 17; x++) {
+      const dx = x - 8, dy = 8.5 - y, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx) * 180 / Math.PI;
+      r += d < 1.2 ? 'k' : d >= 3 && d <= 8.6 && a > 8 && a < 172 ? (Math.round(a / 20) * 20 - a) ** 2 < 9 ? 'y' : 'r' : d < 3 && a > 30 && a < 150 && Math.abs(a - 90) % 30 < 6 ? 'k' : '.';
+    }
+    rows.push(r);
+  }
+  return rows;
+})();
+const TREASURES = [
+  { id: 'acorn', name: 'どんぐり', price: 5, line: '公園でひろったんだ。ころころしてかわいい！', shape: ['.....s......', '....ss......', '..dcccccd...', '.dcdcdcdcd..', '.cccccccccc.', '..aaaaaaaa..', '..ahaaaaaa..', '..ahaaaaaa..', '...aaaaaa...', '....aaaa....', '.....aa.....'], ink: { s: '#6b4226', c: '#8a5a3b', d: '#6b4226', a: '#d9a05b', h: '#f2c98a' } },
+  { id: 'clover', name: '四つ葉のクローバー', price: 8, line: '見つけるといいことがあるんだって！', shape: ['..gg..gg..', '.gggggggg.', '.ggGggGgg.', '..gggggg..', '.gggggggg.', '.ggGggGgg.', '..gg..gg..', '.....s....', '....s.....', '...s......'], ink: { g: '#6fb35a', G: '#3c6d2f', s: '#4c7a40' } },
+  { id: 'onigiri', name: 'おにぎり', price: 8, line: 'おさんぽのおともに。中身はうめぼし！', shape: ['.....ww.....', '....wwww....', '...wwwwww...', '..wwwwuwww..', '..wwwwwwww..', '.wwwwwwwwww.', '.wwwnnnnwww.', 'wwwnnnnnnwww', 'wwwnnnnnnwww', '.wwnnnnnnww.'], ink: { w: '#fdfaf2', u: '#e8413c', n: '#2d3246' } },
+  { id: 'plane', name: '紙ひこうき', price: 10, line: 'どこまで飛ぶかな〜？', shape: ['..........ww', '.......wwwww', '....wwwwwwg.', '.wwwwwwwwg..', '...gggwwg...', '.....ggwg...', '......gwg...', '.......gg...', '........g...'], ink: { w: '#ffffff', g: '#b8c2d8' } },
+  { id: 'ramune', name: 'ラムネ', price: 12, line: 'ビー玉がカランってなるの、好き！', shape: ['...BB...', '...bb...', '..bwwb..', '..bwwb..', '...bb...', '..bbbb..', '.bbbbbb.', '.bwbbbb.', '.bwbbbb.', '.bbbbbb.', '.bBBBBb.', '.bbbbbb.'], ink: { b: '#8fd3ee', B: '#2f86b0', w: '#ffffff' } },
+  { id: 'teru', name: 'てるてる坊主', price: 12, line: 'あしたも晴れますように！', shape: ['....www.....', '...wwwww....', '..wwkwkww...', '..wwwwwww...', '...wwwww....', '...rrrrr....', '..wwwwwww...', '.wwwwwwwww..', '.wgwwwwwgw..', '..g.g.g.g...'], ink: { w: '#ffffff', k: '#2d3246', r: '#e8613c', g: '#c9cfe0' } },
+  { id: 'soccer', name: 'サッカーボール', price: 15, line: 'マヤ、リフティングできるよ！…3回くらい', shape: ['...ggggg...', '..gwwkwwg..', '.gwwkkkwwg.', 'gwwwwkwwwwg', 'gkwwwwwwwkg', 'gkkwwkwwkkg', 'gkwwkkkwwkg', 'gwwwwkwwwwg', '.gwwwwwwwg.', '..gwkkkwg..', '...ggggg...'], ink: { k: '#2d3246', g: '#6a6f88', w: '#ffffff' } },
+  { id: 'goldfish', name: '金魚', price: 25, line: 'お祭りですくったんだ。名前つけよっか！', shape: ['.........b..', '..........b.', '...rrr......', '.rrrrrr..rr.', 'rrkwrrrrrrr.', 'rrrrrrrrrr..', '.rrrorrr.rr.', '..rrrr......'], ink: { r: '#e8613c', o: '#f39a3d', w: '#ffffff', k: '#2d3246', b: '#8fd3ee' } },
+  { id: 'furin', name: '風鈴', price: 30, line: 'チリーンって、すずしい音！', shape: ['.....k.....', '....ccc....', '...ccccc...', '..ccrcrcc..', '..ccccccc..', '..ccccccc..', '.....k.....', '.....k.....', '.....pp....', '.....pp....', '.....pp....'], ink: { k: '#867868', c: '#cfeaf7', r: '#e8613c', p: '#f3a5b2' } },
+  { id: 'daruma', name: 'だるま', price: 35, line: '目標を決めたら、片目をぬるんだって', shape: ['...rrrrrr...', '..rrrrrrrr..', '.rrwwwwwwrr.', '.rwkwwwwkwr.', '.rwwwwwwwwr.', '.rrwwkkwwrr.', 'rrrrrrrrrrrr', 'rrryyrryyrrr', 'rrrrryyrrrrr', '.rrrrrrrrrr.', '..rrrrrrrr..'], ink: { r: '#d9302c', w: '#fdf3e6', k: '#2d3246', y: '#ffc93c' } },
+  { id: 'fuji', name: '富士山の置物', price: 40, line: '日本一の山！いつか登ってみたいな', shape: ['.....ww.....', '....wwww....', '...wwbwww...', '..wbbbbbwb..', '..bbbbbbbbb.', '.bbbbbbbbbb.', 'bbbbbbbbbbbb', 'gggggggggggg'], ink: { w: '#ffffff', b: '#4f7fbf', g: '#6fa35f' } },
+  { id: 'maneki', name: '招き猫', price: 50, line: 'いいこと、たくさん招いてね！', shape: ['.w.....w....', 'wpw...wpw..w', 'wwwwwwwww.ww', 'wkwwwwwkw.ww', 'wwwwkwwwwwww', '.wwwwwwwwww.', '.rrrryrrrr..', '.wwwwwwwww..', '.wwwwwwwww..', '.wwkwwwwww..', '.wwwwwwwww..', '..wwwwwww...'], ink: { w: '#ffffff', p: '#f3a5b2', k: '#2d3246', r: '#e8413c', y: '#ffc93c' } },
+  { id: 'globe', name: '地球儀', price: 80, line: '世界一周って、何歩くらいかな？', shape: ['....bbbb....', '..bbggbbbb..', '.bggggbbbby.', '.bbggbbbgby.', '.bbbbbbggby.', '.bbgbbbbbby.', '..bggbbbby..', '...bbbbb.y..', '.....y.y....', '......y.....', '....yyyyy...'], ink: { b: '#4fa3e0', g: '#6fb35a', y: '#c99a3a' } },
+  { id: 'scope', name: '望遠鏡', price: 100, line: '夜のおさんぽで、星を見よ！', shape: ['..........yy', '........bbbb', '......bbbbby', '....bbbbbb..', '..Bbbbbb....', '.yBbbb......', '..y.k.......', '...k.k......', '..k...k.....', '.k.....k....'], ink: { b: '#6c6aa8', B: '#4a4880', y: '#ffc93c', k: '#867868' } },
+  { id: 'trophy', name: 'トロフィー', price: 120, line: 'がんばった人だけがもらえるんだよ！', shape: ['.yyyyyyyy.', 'yywyyyyyyy', 'y.ywyyyy.y', 'y.yyyyyy.y', '.yyyyyyyy.', '..yyyyyy..', '...yyyy...', '....yy....', '....YY....', '...yyyy...', '..YYYYYY..'], ink: { y: '#ffc93c', Y: '#c99a1a', w: '#fff7c2' } },
+  { id: 'rocket', name: 'ロケット', price: 150, line: 'いつか宇宙までおさんぽしたい！', shape: ['.....r......', '....rrr.....', '....www.....', '...wwwww....', '...wbbbw....', '...wbbbw....', '...wwwww....', '..rwwwwwr...', '.rrwwwwwrr..', '.r.rwwwr.r..', '....oyo.....', '.....o......'], ink: { r: '#e8613c', w: '#ffffff', b: '#4fa3e0', o: '#f39a3d', y: '#ffd65c' } },
+  // 記念の品（コインでは買えない）
+  { id: 'sensu', name: '京都の扇子', lock: 'kyoto', line: '東海道を歩ききった記念！京都のおみやげだよ', shape: fan, ink: { r: '#d9405a', y: '#ffc93c', k: '#6b4226' } },
+  { id: 'goldshoe', name: '金のくつ', lock: 'm100', line: '100万歩！ここまで歩いたくつは、金色になるんだって', shape: ['...yyyy.......', '...yyyyy......', '...ywyww......', '..yyywwyyy....', '..yywyyyyyyy..', '.yyyyyyyyyyyy.', 'YYYYYYYYYYYYYY'], ink: { y: '#ffc93c', Y: '#c99a1a', w: '#fff7c2' } },
+  { id: 'rainbow', name: '虹のかけら', lock: 'm1000', line: '1000万歩…！虹の上まで歩いてきちゃったね', shape: rainbow, ink: { r: '#e8613c', o: '#f39a3d', y: '#ffd65c', g: '#6fb35a', b: '#4fa3e0', p: '#a98bd8' } },
+  { id: 'star5', name: 'きらきら星', lock: 'days1825', line: '5年もいっしょに歩いてくれて、ありがとう！', shape: ['.....y.....', '.....y.....', '....yyy....', 'yyyyyyyyyyy', '.yyyywyyyy.', '..yyyyyyy..', '...yyyyy...', '..yyy.yyy..', '..yy...yy..', '.y.......y.'], ink: { y: '#ffd65c', w: '#fffbe0' } },
+];
+const ALL_GOODS = [...ITEMS, ...TREASURES];
+// 記念の条件
+const LOCKS = {
+  kyoto: { text: '東海道で京都に着いたらもらえる', short: '京都で', ok: st => st.laps >= 1 },
+  streak30: { text: '30日連続で目標を達成したらもらえる', short: '30日連続', ok: st => st.maxStreak >= 30 },
+  m100: { text: '合計100万歩でもらえる', short: '100万歩', ok: st => st.total >= 1e6 },
+  m500: { text: '合計500万歩でもらえる', short: '500万歩', ok: st => st.total >= 5e6 },
+  m1000: { text: '合計1000万歩でもらえる', short: '1000万歩', ok: st => st.total >= 1e7 },
+  days365: { text: '1年記念：歩いた日が365日になったらもらえる', short: '1年記念', ok: st => st.days >= 365 },
+  days1825: { text: '5年記念：歩いた日が1825日になったらもらえる', short: '5年記念', ok: st => st.days >= 1825 },
+};
+const rarity = it => it.lock ? '記念' : it.price <= 20 ? '★' : it.price <= 60 ? '★★' : '★★★';
+function pixelSvg(shape, ink) {
+  const w = Math.max(...shape.map(r => r.length)), h = shape.length;
+  let rects = '';
+  shape.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${ink[c]}"/>`; }));
+  return `<svg viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+}
 
 function spriteSvg(expr = 'normal', faceOnly = false, outfit = S.wallet.wear) {
   const grid = SPRITE.map(r => r.split(''));
   for (const [x, y, c] of EXPR[expr] || []) grid[y][x] = c;
   const rows = faceOnly ? grid.slice(0, 16) : grid;
-  let rects = '';
-  rows.forEach((row, y) => row.forEach((c, x) => { if (c !== '.') rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${PAL[c]}"/>`; }));
-  for (const id of Object.values(outfit || {})) {
-    const it = ITEMS.find(i => i.id === id);
-    if (!it) continue;
+  const items = Object.values(outfit || {}).map(id => ITEMS.find(i => i.id === id)).filter(Boolean);
+  const draw = it => {
+    let r = '';
     it.shape.forEach((row, dy) => [...row].forEach((c, dx) => {
       const y = it.y + dy;
-      if (c !== '.' && y < rows.length) rects += `<rect x="${it.x + dx}" y="${y}" width="1.02" height="1.02" fill="${it.ink[c]}"/>`;
+      if (c !== '.' && y < rows.length) r += `<rect x="${it.x + dx}" y="${y}" width="1.02" height="1.02" fill="${it.ink[c]}"/>`;
     }));
-  }
+    return r;
+  };
+  let rects = items.filter(i => i.behind).map(draw).join('');
+  rows.forEach((row, y) => row.forEach((c, x) => { if (c !== '.') rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${PAL[c]}"/>`; }));
+  rects += items.filter(i => !i.behind).map(draw).join('');
   return `<svg viewBox="0 0 18 ${rows.length}" shape-rendering="crispEdges" overflow="visible" aria-hidden="true">${rects}</svg>`;
 }
 const mascot = (expr = 'normal', cls = '', id = '') => `<div class="mascot ${cls}" ${id ? `id="${id}"` : ''} data-expr="${expr}">${spriteSvg(expr)}</div>`;
@@ -564,12 +683,12 @@ const S = {
   set: { ...DEFAULT_SET },
   days: {},          // 'YYYY-MM-DD' → { h:ヘルスケアから受け取った歩数, hAt:受け取った時刻, l:アプリで数えた歩数(受け取り後), g:その日の目標, c:お祝い済み }
   outings: [],       // おでかけの記録
-  wallet: { spent: 0, owned: [], wear: {} },
+  wallet: { v: 2, spent: 0, owned: [], wear: {}, fav: null, lvSeen: 1, seenLocks: [] },
   sugo: { seen: 0 }, // すごろくで、お祝いを見せた宿場の数（周回ぶんも含めた通算）
   walk: null,        // 記録中のおでかけ
   hist: { tab: 'cal', ym: '' },
   outingId: null,
-  kise: { slot: 'head', try: null },
+  kise: { tab: 'dress', slot: 'head', try: null },
 };
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -606,18 +725,34 @@ function streak() {
   return n;
 }
 
-// ───── コイン：歩いた記録からいつでも計算し直す（同じ日を二重に数えない）─────
-// 1,000歩ごとに1枚、目標を達成した日は+5枚、すごろくで宿場に着くたびに+3枚
-function coinsEarned() {
-  let c = 0;
-  for (const k of Object.keys(S.days)) {
+// ───── 歩いた記録のまとめ（コイン・記念の品・なかよしレベルの計算に使う）─────
+function lifeStats() {
+  let total = 0, days = 0, maxStreak = 0, weekBonus = 0, run = 0, prevKey = null;
+  for (const k of Object.keys(S.days).sort()) {
     const s = stepsOf(k);
-    c += Math.floor(s / 1000);
-    if (s >= goalOf(k)) c += 5;
+    total += s;
+    if (s > 0) days++;
+    if (s >= goalOf(k)) {
+      run = prevKey && run && addDays(prevKey, 1) === k ? run + 1 : 1;
+      if (run % 7 === 0) weekBonus++;   // 7日続くたびに1枚
+      maxStreak = Math.max(maxStreak, run);
+    } else run = 0;
+    prevKey = k;
   }
-  return c + sugoState().reachedTotal * 3;
+  return { total, days, maxStreak, weekBonus, laps: sugoState().lap };
 }
+// ───── コイン：歩いた記録からいつでも計算し直す（同じ日を二重に数えない）─────
+// 合計歩数 10,000歩ごとに1枚、7日連続で目標達成するたびに+1枚、すごろくで京都に着くたびに+10枚
+const COIN_STEPS = 10000;
+function coinsEarned(st = lifeStats()) { return Math.floor(st.total / COIN_STEPS) + st.weekBonus + st.laps * 10; }
 const coins = () => Math.max(0, coinsEarned() - S.wallet.spent);
+// ───── なかよしレベル：合計歩数で上がる。レベルが上がるほど次までの歩数が増える ─────
+// Lv.L になるのに必要な合計歩数 ＝ 50,000 ×（L−1）× L ÷ 2（Lv.10 ≒ 225万歩、Lv.20 ≒ 950万歩）
+const LV_UNIT = 50000;
+const lvNeed = L => LV_UNIT * (L - 1) * L / 2;
+function levelOf(total) { let L = 1; while (lvNeed(L + 1) <= total) L++; return L; }
+const LV_TITLES = [[30, '伝説のウォーカー'], [20, '旅の達人'], [15, '健脚さん'], [10, 'おさんぽ名人'], [5, 'てくてく見習い'], [1, 'おさんぽビギナー']];
+const lvTitle = L => LV_TITLES.find(([n]) => L >= n)[1];
 
 // ───── 東海道五十三次（すごろく）─────
 // [宿場, 日本橋からのおおよその距離 km, 緯度, 経度, マヤのひとこと]
@@ -743,7 +878,7 @@ async function syncSteps() {
   let text = '';
   try { text = await navigator.clipboard.readText(); } catch (e) {}
   const got = parseHealth(text);
-  if (Object.keys(got).length) { await applyHealth(got); sfx('coin'); render('none'); celebrateIfDone(); return; }
+  if (Object.keys(got).length) { await applyHealth(got); sfx('coin'); render('none'); celebrateIfDone(); setTimeout(celebrateMilestones, 800); return; }
   openPasteSheet();
 }
 function openPasteSheet() {
@@ -944,6 +1079,8 @@ function renderHome() {
   const k = todayKey(), s = stepsOf(k), g = goalOf(k), d = S.days[k];
   const sg = sugoState(), newSugo = sg.reachedTotal > S.sugo.seen;
   const syncedAt = d?.hAt ? new Date(d.hAt) : null;
+  const st = lifeStats(), lv = levelOf(st.total), lvP = (st.total - lvNeed(lv)) / (lvNeed(lv + 1) - lvNeed(lv));
+  const fav = S.wallet.fav && TREASURES.find(t => t.id === S.wallet.fav);
   app.innerHTML = `
     <div class="hero">
       <div>
@@ -952,7 +1089,7 @@ function renderHome() {
       </div>
       ${mascot('normal', 'hero-mascot breathe', 'hero-mascot')}
     </div>
-    <div class="hero-talk"><div class="bubble up pop" id="hero-bubble">${esc(homeLine())}</div></div>
+    <div class="hero-talk">${fav ? `<span class="fav" title="${esc(fav.name)}">${pixelSvg(fav.shape, fav.ink)}</span>` : ''}<div class="bubble up pop" id="hero-bubble">${esc(homeLine())}</div></div>
     <div class="stagger">
       <div class="card">
         <div class="today">
@@ -968,6 +1105,8 @@ function renderHome() {
           <button class="btn" data-act="sync">${icon('sync')}歩数をもらう</button>
           <div class="when">${syncedAt ? `最後にもらったのは<br><span class="num">${pad(syncedAt.getHours())}:${pad(syncedAt.getMinutes())}</span>` : 'まだ今日は<br>もらってないよ'}</div>
         </div>
+        <div class="lvrow"><span class="chip">なかよし Lv.<span class="num">${lv}</span></span><b>${lvTitle(lv)}</b><span class="lvnext">次まで ${fmt(lvNeed(lv + 1) - st.total)}歩</span></div>
+        <div class="prog"><i data-w="${lvP * 100}"></i></div>
         ${S.walk ? `<button class="walking-bar" data-act="go" data-id="odekake">${face('happy')}<span>おでかけ記録中（${(S.walk.dist / 1000).toFixed(2)} km）</span>${icon('next')}</button>` : ''}
       </div>
       <h2>モードを選ぶ</h2>
@@ -975,12 +1114,14 @@ function renderHome() {
         <button class="mode c1" data-act="go" data-id="simple"><span class="ic">${icon('foot')}</span><b>シンプル</b><small>目標の歩数をめざす</small></button>
         <button class="mode c2" data-act="go" data-id="odekake"><span class="ic">${icon('map')}</span><b>おでかけ</b><small>歩いた道を地図に残す</small></button>
         <button class="mode c3" data-act="go" data-id="sugoroku">${newSugo ? '<span class="new">NEW</span>' : ''}<span class="ic">${icon('flag')}</span><b>すごろく</b><small>${esc(TOKAIDO[sg.idx][0])}${sg.idx === 0 && !sg.lap ? 'から出発' : 'にいるよ'}</small></button>
-        <button class="mode c4" data-act="go" data-id="kisekae"><span class="ic">${icon('shirt')}</span><b>きせかえ</b><small>コイン ${fmt(coins())}枚</small></button>
+        <button class="mode c4" data-act="go" data-id="kisekae"><span class="ic">${icon('star')}</span><b>ごほうび</b><small>コイン ${fmt(coins())}枚</small></button>
         <button class="mode wide c5" data-act="go" data-id="history"><span class="ic">${icon('cal')}</span><b>活動履歴</b><small>連続達成 ${streak()}日</small></button>
         <button class="mode wide c6" data-act="go" data-id="settings"><span class="ic">${icon('gear')}</span><b>設定</b><small>目標・歩数の連携</small></button>
       </div>
     </div>`;
   countUp(); animateRings(s / g);
+  setTimeout(() => app.querySelectorAll('.prog i[data-w]').forEach(i => i.style.width = i.dataset.w + '%'), 250);
+  setTimeout(celebrateMilestones, 700);
   const m = document.getElementById('hero-mascot');
   m.onclick = () => {
     replay(m, 'jelly'); setExpr(m, 'happy'); sfx('pop');
@@ -1425,7 +1566,7 @@ function renderSugoroku() {
       <div class="sugomap" id="sugomap"></div>
       <h2>宿場スタンプ（${sg.lap ? TOKAIDO.length : sg.idx + 1} / ${TOKAIDO.length}）</h2>
       <div class="card"><div class="stamps">${TOKAIDO.map((s, i) => `<button class="stamp ${got(i) ? 'got' : ''} ${i === sg.idx ? 'cur' : ''}" data-act="stamp" data-id="${i}">${got(i) ? esc(s[0]) : i}</button>`).join('')}</div></div>
-      <p class="note">${S.set.sugoStart ? `${parseKey(S.set.sugoStart).getMonth() + 1}月${parseKey(S.set.sugoStart).getDate()}日` : '今日'}からの歩数（合計 ${fmt(sg.steps)}歩）で進みます。1歩 = ${Math.round(stride() * 100)}cm（設定の身長から計算）。宿場に着くとコイン+3枚！</p>
+      <p class="note">${S.set.sugoStart ? `${parseKey(S.set.sugoStart).getMonth() + 1}月${parseKey(S.set.sugoStart).getDate()}日` : '今日'}からの歩数（合計 ${fmt(sg.steps)}歩）で進みます。1歩 = ${Math.round(stride() * 100)}cm（設定の身長から計算）。京都に着くとコイン+10枚！</p>
     </div>`;
   countUp();
   setTimeout(() => app.querySelectorAll('.prog i[data-w]').forEach(i => i.style.width = i.dataset.w + '%'), 250);
@@ -1445,12 +1586,16 @@ function renderSugoroku() {
   hopRunner(xs, runnerX);
   // 新しく着いた宿場があればお祝い
   if (sg.reachedTotal > S.sugo.seen) {
-    const n = sg.reachedTotal - S.sugo.seen;
-    S.sugo.seen = sg.reachedTotal; dbSet('sugo', S.sugo);
+    const n = sg.reachedTotal - S.sugo.seen, lapUp = sg.lap > (S.sugo.lapSeen || 0);
+    S.sugo.seen = sg.reachedTotal; S.sugo.lapSeen = sg.lap; dbSet('sugo', S.sugo);
+    const goal = TOKAIDO[TOKAIDO.length - 1];
     setTimeout(() => {
       sfx('fanfare'); confetti();
-      popCard(`<div class="bigstamp"><small>東海道</small><b>${esc(cur[0])}</b><small>${sg.idx === TOKAIDO.length - 1 ? 'ゴール' : '到着'}</small></div>
-        <h3>${esc(cur[0])}に着いたよ！</h3><p>${esc(cur[4])}<br>${n > 1 ? `${n}宿ぶん進んで、` : ''}コイン<b class="num">+${n * 3}</b>枚！</p>`);
+      popCard(lapUp
+        ? `<div class="bigstamp"><small>東海道</small><b>${esc(goal[0])}</b><small>ゴール</small></div>
+          <h3>京都に到着〜！</h3><p>東海道を歩ききったね！コイン<b class="num">+${(sg.lap - (S.sugo.lapPrev || 0)) * 10}</b>枚！<br>また日本橋から${sg.lap + 1}周目に出発だよ</p>`
+        : `<div class="bigstamp"><small>東海道</small><b>${esc(cur[0])}</b><small>到着</small></div>
+          <h3>${esc(cur[0])}に着いたよ！</h3><p>${esc(cur[4])}${n > 1 ? `<br>${n}宿ぶん進んで、スタンプも${n}こ集まったよ！` : ''}</p>`, () => { S.sugo.lapPrev = sg.lap; dbSet('sugo', S.sugo); celebrateMilestones(); });
     }, 900);
   }
 }
@@ -1492,40 +1637,86 @@ function openStamp(i) {
   void sh;
 }
 
-// ───── きせかえ ─────
-function itemLocked(it) { return it.lock === 'kyoto' && sugoState().lap < 1; }
+// ───── ごほうび（きせかえ・たからもの）─────
+const unlocked = (it, st = lifeStats()) => !!it.lock && LOCKS[it.lock].ok(st);
+const isOwned = (it, st) => S.wallet.owned.includes(it.id) || unlocked(it, st);
+function priceTag(it, st) {
+  if (isOwned(it, st)) return '持ってる';
+  if (it.lock) return esc(LOCKS[it.lock].short);
+  return `<span class="coin"></span>${it.price}`;
+}
 function renderKisekae() {
+  const k = S.kise, st = lifeStats(), left = COIN_STEPS - st.total % COIN_STEPS;
+  const tabs = `<div class="seg2" style="margin-bottom:14px"><button class="pill ${k.tab !== 'shelf' ? 'on' : ''}" data-act="ktab" data-id="dress">${icon('shirt')}きせかえ</button><button class="pill ${k.tab === 'shelf' ? 'on' : ''}" data-act="ktab" data-id="shelf">${icon('star')}たからもの</button></div>`;
+  const next = `<div class="card nextcoin"><span class="coin"></span><div class="t">次のコインまで あと <b class="num">${fmt(left)}</b>歩<div class="prog"><i data-w="${(1 - left / COIN_STEPS) * 100}"></i></div></div></div>`;
+  app.innerHTML = topbar('ごほうび', 'home', coinBox('coin-top')) + tabs + (k.tab === 'shelf' ? shelfHtml(st) : dressHtml(st)) + next + `
+    <p class="note" style="margin-top:12px">コインは、毎日の歩数を合計して 10,000歩ごとに1枚。7日連続で目標を達成するたびに+1枚、すごろくで京都に着くたびに+10枚もらえます。「記念」の品はコインでは買えず、長く歩き続けるともらえます。</p>`;
+  setTimeout(() => app.querySelectorAll('.prog i[data-w]').forEach(i => i.style.width = i.dataset.w + '%'), 200);
+}
+function dressHtml(st) {
   const k = S.kise, wear = { ...S.wallet.wear };
-  if (k.try) wear[ITEMS.find(i => i.id === k.try).slot] = k.try;
-  const items = ITEMS.filter(i => i.slot === k.slot);
   const tryIt = k.try && ITEMS.find(i => i.id === k.try);
-  const owned = id => S.wallet.owned.includes(id);
+  if (tryIt) wear[tryIt.slot] = tryIt.id;
   let action = '';
   if (tryIt) {
     const worn = S.wallet.wear[tryIt.slot] === tryIt.id;
-    action = itemLocked(tryIt) ? `<button class="btn block" disabled>京都に着いたらもらえるよ</button>`
-      : owned(tryIt.id) || !tryIt.price ? `<button class="btn block" data-act="wear" data-id="${tryIt.id}">${worn ? 'はずす' : `${icon('check')}つける`}</button>`
-      : `<button class="btn block" data-act="buy" data-id="${tryIt.id}" ${coins() < tryIt.price ? 'disabled' : ''}><span class="coin"></span>${tryIt.price}枚で買う</button>`;
+    action = isOwned(tryIt, st) ? `<button class="btn block" data-act="wear" data-id="${tryIt.id}">${worn ? 'はずす' : `${icon('check')}つける`}</button>`
+      : tryIt.lock ? `<p class="note" style="margin:0">${esc(LOCKS[tryIt.lock].text)}よ</p>`
+      : `<button class="btn block" data-act="buy" data-id="${tryIt.id}" ${coins() < tryIt.price ? 'disabled' : ''}><span class="coin"></span>${tryIt.price}枚で交換</button>`;
   }
-  app.innerHTML = topbar('きせかえ', 'home', coinBox('coin-top')) + `
+  const say = tryIt ? `${tryIt.name}、${isOwned(tryIt, st) ? 'どうかな？' : tryIt.lock ? 'いつか着てみたいな〜' : '似合うかな？'}` : '小物をえらんで、ためしてみてね！';
+  return `
     <div class="dress">
       <!-- data-expr を normal 以外にして、まばたきで試着中の小物が消えないようにする -->
       <div class="stage"><div class="mascot breathe" id="dress-m" data-expr="dress">${spriteSvg('normal', false, wear)}</div></div>
       <div class="side">
-        <div class="bubble left pop" id="dress-bubble">${esc(tryIt ? `${tryIt.name}、${owned(tryIt.id) || !tryIt.price ? 'どうかな？' : '似合うかな？'}` : '小物をえらんで、ためしてみてね！')}</div>
+        <div class="bubble left pop" id="dress-bubble">${esc(say)}</div>
         <div style="margin-top:12px">${action}</div>
       </div>
     </div>
-    <div class="seg3" style="margin:20px 0 14px">${SLOTS.map(([id, name]) => `<button class="pill ${k.slot === id ? 'on' : ''}" data-act="slot" data-id="${id}">${name}</button>`).join('')}</div>
-    <div class="items">${items.map(it => {
-      const worn = S.wallet.wear[it.slot] === it.id, lock = itemLocked(it);
-      return `<button class="item ${k.try === it.id ? 'sel' : ''} ${lock ? 'lock' : ''}" data-act="try" data-id="${it.id}">
-        ${worn ? '<span class="chip badge">つけてる</span>' : ''}
-        ${face('normal', 'mascot', { [it.slot]: it.id })}
-        <b>${esc(it.name)}</b>
-        <small>${lock ? '京都で' : owned(it.id) || !it.price ? '持ってる' : `<span class="coin"></span>${it.price}`}</small></button>`;
-    }).join('')}</div>
-    <p class="note" style="margin-top:16px">コインは 1,000歩ごとに1枚、目標達成の日は+5枚、すごろくで宿場に着くと+3枚もらえます。</p>`;
+    <div class="seg4" style="margin:18px 0 14px">${SLOTS.map(([id, name]) => `<button class="pill ${k.slot === id ? 'on' : ''}" data-act="slot" data-id="${id}">${name}</button>`).join('')}</div>
+    <div class="items">${ITEMS.filter(i => i.slot === k.slot).map(it => {
+      const worn = S.wallet.wear[it.slot] === it.id, own = isOwned(it, st);
+      return `<button class="item ${k.try === it.id ? 'sel' : ''} ${it.lock && !own ? 'lock' : ''}" data-act="try" data-id="${it.id}">
+        ${worn ? '<span class="chip badge">つけてる</span>' : `<span class="rare">${rarity(it)}</span>`}
+        <div class="mascot">${spriteSvg('normal', false, { [it.slot]: it.id })}</div>
+        <b>${esc(it.name)}</b><small>${priceTag(it, st)}</small></button>`;
+    }).join('')}</div>`;
+}
+function shelfHtml(st) {
+  const got = TREASURES.filter(t => isOwned(t, st)).length;
+  return `
+    <div class="card shelfhead">${face('happy')}<div><span class="muted">あつめた たからもの</span><br><b class="num">${got}</b> / ${TREASURES.length}</div></div>
+    <div class="shelf">${TREASURES.map(t => {
+      const own = isOwned(t, st);
+      return `<button class="tr ${own ? 'got' : ''}" data-act="tr" data-id="${t.id}">
+        <span class="rare">${rarity(t)}</span>
+        <span class="pic">${own ? pixelSvg(t.shape, t.ink) : pixelSvg(t.shape, new Proxy({}, { get: () => 'currentColor' }))}</span>
+        <b>${own ? esc(t.name) : '？？？'}</b><small>${priceTag(t, st)}</small></button>`;
+    }).join('')}</div>`;
+}
+function openTreasure(id) {
+  const t = TREASURES.find(x => x.id === id), st = lifeStats(), own = isOwned(t, st);
+  const sh = openSheet(own ? esc(t.name) : 'まだ持っていないよ', `
+    <div class="trbig ${own ? '' : 'shadow'}">${own ? pixelSvg(t.shape, t.ink) : pixelSvg(t.shape, new Proxy({}, { get: () => 'currentColor' }))}</div>
+    <p style="text-align:center;margin:4px 0"><span class="chip">${rarity(t)}</span></p>
+    ${own ? `<div class="coach">${face('happy')}<div class="bubble left">${esc(t.line)}</div></div>
+      <button class="btn ${S.wallet.fav === t.id ? 'sub' : ''} block" id="tr-fav">${S.wallet.fav === t.id ? 'ホームにかざるのをやめる' : `${icon('star')}ホームにかざる`}</button>`
+    : t.lock ? `<p style="text-align:center">${esc(LOCKS[t.lock].text)}よ。<br>どんな品かは、もらってからのお楽しみ！</p>`
+    : `<p style="text-align:center">コイン <b class="num">${t.price}</b>枚で交換できるよ（いま <b class="num">${fmt(coins())}</b>枚）</p>
+      <button class="btn block" id="tr-buy" ${coins() < t.price ? 'disabled' : ''}><span class="coin"></span>${t.price}枚で交換</button>`}`);
+  sh.el.querySelector('#tr-fav')?.addEventListener('click', async () => {
+    S.wallet.fav = S.wallet.fav === t.id ? null : t.id;
+    await dbSet('wallet', S.wallet); sh.close(); toast(S.wallet.fav ? 'ホームにかざったよ！' : 'しまったよ');
+  });
+  sh.el.querySelector('#tr-buy')?.addEventListener('click', async () => {
+    if (coins() < t.price) return toast('コインが足りないよ');
+    S.wallet.spent += t.price; S.wallet.owned.push(t.id);
+    await dbSet('wallet', S.wallet);
+    sh.close(); sfx('fanfare'); render('none');
+    replay(document.getElementById('coin-top'), 'spin');
+    popCard(`<div class="trbig">${pixelSvg(t.shape, t.ink)}</div><h3>${esc(t.name)}をゲット！</h3><p>${esc(t.line)}</p>`);
+  });
 }
 async function buyItem(id) {
   const it = ITEMS.find(i => i.id === id);
@@ -1536,6 +1727,24 @@ async function buyItem(id) {
   replay(document.getElementById('coin-top'), 'spin');
   replay(document.getElementById('dress-m'), 'hop');
   const b = document.getElementById('dress-bubble'); if (b) b.textContent = `わーい！${it.name}、ありがとう！`;
+}
+// レベルアップと、新しくもらえた記念の品をお祝いする（ほかのお祝いと重ならないように1つずつ）
+function celebrateMilestones() {
+  if (document.querySelector('.popwrap')) return;
+  const st = lifeStats(), lv = levelOf(st.total);
+  const fresh = ALL_GOODS.find(it => unlocked(it, st) && !(S.wallet.seenLocks || []).includes(it.id));
+  if (fresh) {
+    S.wallet.seenLocks = [...(S.wallet.seenLocks || []), fresh.id]; dbSet('wallet', S.wallet);
+    sfx('fanfare'); confetti();
+    const pic = fresh.slot ? `<div class="mascot" style="width:96px;height:112px;margin:0 auto">${spriteSvg('happy', false, { [fresh.slot]: fresh.id })}</div>` : `<div class="trbig">${pixelSvg(fresh.shape, fresh.ink)}</div>`;
+    popCard(`${pic}<h3>記念の品「${esc(fresh.name)}」！</h3><p>${esc(LOCKS[fresh.lock].text.replace('もらえる', 'もらえたよ'))}！<br>「ごほうび」で見てみてね</p>`, celebrateMilestones);
+    return;
+  }
+  if (lv > (S.wallet.lvSeen || 1)) {
+    S.wallet.lvSeen = lv; dbSet('wallet', S.wallet);
+    sfx('fanfare'); confetti();
+    popCard(`${mascot('happy')}<h3>なかよしレベル <span class="num">${lv}</span>！</h3><p>${callName()}とマヤ、もっとなかよしになったね！<br>いまの称号は「${lvTitle(lv)}」だよ</p>`, () => render('none'));
+  }
 }
 
 // ───── 設定 ─────
@@ -1661,6 +1870,8 @@ app.addEventListener('click', async e => {
       S.outings = S.outings.filter(o => o.id !== S.outingId); await dbSet('outings', S.outings);
       toast('記録を消しました'); return go('history');
     case 'stamp': return openStamp(+id);
+    case 'ktab': S.kise.tab = id; S.kise.try = null; return render('none');
+    case 'tr': return openTreasure(id);
     case 'slot': S.kise.slot = id; S.kise.try = null; return render('none');
     case 'try': S.kise.try = S.kise.try === id ? null : id; render('none'); return replay(document.getElementById('dress-m'), 'jelly');
     case 'buy': return buyItem(id);
@@ -1692,7 +1903,14 @@ document.addEventListener('visibilitychange', () => {
   applyTheme();
   try {
     const [days, outings, wallet, sugo, walk] = await Promise.all(['days', 'outings', 'wallet', 'sugo', 'walk'].map(dbGet));
-    S.days = days || {}; S.outings = outings || []; S.wallet = { spent: 0, owned: [], wear: {}, ...wallet }; S.sugo = sugo || { seen: 0 };
+    S.days = days || {}; S.outings = outings || []; S.wallet = { ...S.wallet, ...wallet }; S.sugo = sugo || { seen: 0 };
+    // 2版目でコインの数え方を「1,000歩で1枚」から「10,000歩で1枚」に変えた。持っている小物はそのままで、使ったコインは0に戻す
+    if (wallet && wallet.v !== 2) {
+      const st = lifeStats();
+      Object.assign(S.wallet, { v: 2, spent: 0, lvSeen: levelOf(st.total), seenLocks: ALL_GOODS.filter(it => unlocked(it, st)).map(it => it.id) });
+      S.sugo.lapSeen = S.sugo.lapPrev = st.laps;
+      await Promise.all([dbSet('wallet', S.wallet), dbSet('sugo', S.sugo)]);
+    }
     // 途中で閉じたおでかけは、一時停止の状態で続きから
     if (walk) { S.walk = walk; if (walk.status === 'rec') { walk.elapsed = walk.elapsed + Math.max(0, (walk.savedAt || Date.now()) - walk.resumeAt); walk.status = 'pause'; } }
   } catch (e) { toast('保存データを読み込めませんでした'); }
