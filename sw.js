@@ -1,5 +1,5 @@
 // アプリ本体をキャッシュして、電波が弱い場所でも起動できるようにする
-const CACHE = 'teku-maya-v6';
+const CACHE = 'teku-maya-v7';
 const SHELL = [
   './',
   'index.html',
@@ -28,7 +28,8 @@ self.addEventListener('fetch', e => {
   if (url.hostname === 'cyberjapandata.gsi.go.jp' || url.hostname === 'photon.komoot.io') return;
   // アプリ本体はネット優先・失敗したらキャッシュ（更新がすぐ反映されるように）
   e.respondWith(
-    fetch(e.request)
+    // ブラウザの一時保存（最大10分）を使わず、毎回サーバーに新しい版があるか確かめる
+    fetch(e.request, { cache: 'no-cache' })
       .then(res => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
         return res;

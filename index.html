@@ -265,7 +265,7 @@ label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:1
 .spot.on{border-color:var(--accent);box-shadow:0 4px 0 var(--accent-deep)}
 /* マヤとボタンは固定して、スポットの一覧だけをスクロールさせる */
 .rp-maya{flex:none}
-.rp-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:4px 16px 4px}
+.rp-list{position:relative;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:4px 16px 4px}
 .rp-ctl{flex:none;padding:10px 0 calc(var(--safe-b) + 14px);background:var(--bg)}
 
 /* ───── 下から出るパネル ───── */
@@ -1540,7 +1540,15 @@ function focusSpot(i, moveMap = true) {
   const s = list[i], k = SPOT_KINDS[s.kind];
   const b = document.getElementById('rest-bubble');
   if (b) { b.innerHTML = `${esc(k.line(s.name))}<br><small class="muted">${k.name} ・ 歩いて約${walkMin(s.dist)}分</small>`; replay(b, 'pop'); }
-  document.querySelectorAll('#spotlist .spot').forEach((c, j) => { c.classList.toggle('on', j === i); if (j === i) c.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); });
+  document.querySelectorAll('#spotlist .spot').forEach((c, j) => c.classList.toggle('on', j === i));
+  // 選んだスポットが見えるように、一覧の中だけをスクロールする
+  // （scrollIntoView は iPhone だと休憩画面ごと動いてマヤが隠れるので使わない）
+  const box = document.querySelector('.rp-list'), card = document.querySelectorAll('#spotlist .spot')[i];
+  if (box && card) {
+    const top = card.offsetTop, bottom = top + card.offsetHeight;   // .rp-list を基準にした位置
+    if (top < box.scrollTop || bottom > box.scrollTop + box.clientHeight) box.scrollTo({ top: Math.max(0, top - 8), behavior: reduced() ? 'auto' : 'smooth' });
+  }
+  const panel = document.getElementById('restpanel'); if (panel) panel.scrollTop = 0;
   if (G.map && moveMap) {
     G.follow = false; document.querySelector('[data-act="locate"]')?.classList.remove('on');
     G.map.setView([s.lat, s.lng], Math.max(G.map.getZoom(), 16));
