@@ -383,6 +383,9 @@ label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:1
 .nextcoin .prog{height:10px;margin-top:6px}
 .rare{position:absolute;top:6px;left:8px;font-size:10px;font-weight:700;color:var(--sun-deep);letter-spacing:-1px}
 .item .mascot{width:46px;height:54px;margin-top:6px}
+.wavebox{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;font-size:14px;line-height:1.6}
+.wavebox .face{width:48px;height:44px;flex:none}
+.wavebox small{color:var(--muted);font-weight:700}
 .shelfhead{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px}
 .shelfhead .face{width:48px;height:44px}
 .shelfhead b{font-size:24px}
@@ -596,6 +599,73 @@ const TREASURES = [
   { id: 'rainbow', name: '虹のかけら', lock: 'm1000', line: '1000万歩…！虹の上まで歩いてきちゃったね', shape: rainbow, ink: { r: '#e8613c', o: '#f39a3d', y: '#ffd65c', g: '#6fb35a', b: '#4fa3e0', p: '#a98bd8' } },
   { id: 'star5', name: 'きらきら星', lock: 'days1825', line: '5年もいっしょに歩いてくれて、ありがとう！', shape: ['.....y.....', '.....y.....', '....yyy....', 'yyyyyyyyyyy', '.yyyywyyyy.', '..yyyyyyy..', '...yyyyy...', '..yyy.yyy..', '..yy...yy..', '.y.......y.'], ink: { y: '#ffd65c', w: '#fffbe0' } },
 ];
+// ───── 季節のおとどけ（5年分を先に入れておき、決まった日になったら交換できるようになる）─────
+// wave の番号が WAVES の何番目の日付で届くか。届く前は一覧に出さない
+const WAVES = [
+  ['2027-04-01', '春のおとどけ'], ['2027-10-01', '秋のおとどけ'], ['2028-04-01', '春のおとどけ'], ['2028-10-01', '秋のおとどけ'],
+  ['2029-04-01', '春のおとどけ'], ['2029-10-01', '冬じたくのおとどけ'], ['2030-04-01', '春のおとどけ'], ['2030-10-01', 'お祭りのおとどけ'],
+  ['2031-04-01', '春のおとどけ'], ['2031-10-01', '宇宙のおとどけ'],
+];
+const helmet = (() => {   // 宇宙ヘルメット：頭のまわりのガラスの丸い枠を、中心からの距離で作る
+  const rows = [];
+  for (let y = -3; y <= 13; y++) {
+    let r = '';
+    for (let x = -1; x <= 18; x++) {
+      const d = Math.hypot(x - 8.5, (y - 5.5) * 1.05);
+      r += y >= 12 ? (x >= 3 && x <= 14 ? 'G' : '.') : d >= 8.6 && d < 9.8 ? (x < 6 && y < 3 ? 'W' : 'B') : '.';
+    }
+    rows.push(r);
+  }
+  return rows;
+})();
+ITEMS.push(
+  { id: 'kanzashi', wave: 1, slot: 'head', name: 'さくらのかんざし', price: 30, x: 11, y: 1, shape: ['.PP.', 'PYPP', '.PP.', '...S', '...S', '..PS'], ink: { P: '#f7b6c8', Y: '#ffd65c', S: '#c9cfe0' } },
+  { id: 'witch', wave: 2, slot: 'head', name: '魔女の帽子', price: 60, x: 2, y: -5, shape: ['.......KK.....', '......KKK.....', '.....KKKK.....', '.....KKKKK....', '....KKKKKK....', '....OOOOOOO...', 'KKKKKKKKKKKKKK'], ink: { K: '#4a3a6a', O: '#f39a3d' } },
+  { id: 'frog', wave: 3, slot: 'head', name: 'カエルのフード', price: 50, x: 2, y: -2, shape: ['...GWG..GWG...', '...GKG..GKG...', '..GGGGGGGGGG..', '.GGGGGGGGGGGG.', 'GGGGGGGGGGGGGG'], ink: { G: '#6fb35a', W: '#ffffff', K: '#2d3246' } },
+  { id: 'butterfly', wave: 3, slot: 'back', name: 'ちょうちょのはね', price: 80, behind: true, x: -3, y: 6, shape: ['PPP..................PPP', 'PPPP................PPPP', 'PYPPP..............PPPYP', 'PPPP................PPPP', '.PP..................PP.', '.PPP................PPP.', '..PP................PP..'], ink: { P: '#a98bd8', Y: '#ffd65c' } },
+  { id: 'acorncap', wave: 4, slot: 'head', name: 'どんぐりぼうし', price: 40, x: 4, y: -1, shape: ['....s.....', '.dcdcdcd..', 'dcdcdcdcdc', '.cccccccc.'], ink: { s: '#6b4226', c: '#8a5a3b', d: '#6b4226' } },
+  { id: 'bunny', wave: 5, slot: 'head', name: 'うさみみ', price: 50, x: 5, y: -6, shape: ['.W...W.', 'WPW.WPW', 'WPW.WPW', 'WPW.WPW', 'WPW.WPW', '.WW.WW.', 'BBBBBBB'], ink: { W: '#ffffff', P: '#f7b6c8', B: '#f06b8a' } },
+  { id: 'knit', wave: 6, slot: 'head', name: '毛糸のぼうし', price: 40, x: 3, y: -2, shape: ['.....WW.....', '....RRRR....', '..RRRRRRRR..', '.RRWRRWRRWR.', 'RRRRRRRRRRRR', 'WWWWWWWWWWWW'], ink: { R: '#d9405a', W: '#ffffff' } },
+  { id: 'catmask', wave: 7, slot: 'face', name: 'ネコのお面', price: 50, x: 10, y: 0, shape: ['W...W', 'WWWWW', 'WKWKW', 'RWPWR', '.WWW.'], ink: { W: '#ffffff', K: '#2d3246', P: '#f06b8a', R: '#e8613c' } },
+  { id: 'sunflower', wave: 7, slot: 'back', name: 'ひまわり', price: 40, x: 14, y: 5, shape: ['.YYY.', 'YBBBY', 'YBBBY', '.YYY.', '..G..', '.GG..', '..G..', '..G..', '..G..'], ink: { Y: '#ffc93c', B: '#8a5a3b', G: '#5a9a48' } },
+  { id: 'foxmask', wave: 8, slot: 'face', name: 'キツネのお面', price: 50, x: 2, y: 0, shape: ['W...W', 'WWWWW', 'RWWWR', 'WKWKW', '.WRW.', '..W..'], ink: { W: '#ffffff', K: '#2d3246', R: '#e8413c' } },
+  { id: 'broom', wave: 9, slot: 'back', name: '魔法のほうき', price: 70, x: 14, y: 4, shape: ['..K.', '..K.', '..K.', '..K.', '..K.', '..K.', '..K.', '..K.', '..K.', '..K.', '.RRR', '.YYY', 'YYYY', 'YYYY', 'YY.Y'], ink: { K: '#8a5a3b', Y: '#e8c25a', R: '#e8613c' } },
+  { id: 'helmet', wave: 10, slot: 'head', name: '宇宙ヘルメット', price: 100, x: -1, y: -3, shape: helmet, ink: { B: '#8fd3ee', W: '#ffffff', G: '#9fa8c0' } },
+  { id: 'meteor', wave: 10, slot: 'back', name: '流れ星', price: 120, x: 11, y: -5, shape: ['......Y.', '.....YYY', '....w.Y.', '...w....', '..w.....', '.w......'], ink: { Y: '#ffd65c', w: '#fff1a8' } },
+);
+TREASURES.push(
+  { id: 'koinobori', wave: 1, name: 'こいのぼり', price: 40, line: '空を泳ぐこいのぼり、気持ちよさそう！', shape: ['K...........', 'Krrrrrrrrr..', 'Krwkrrrrrrr.', 'Krrrrrrrrr..', 'K...........', 'Kbbbbbbbbb..', 'Kbwkbbbbbbb.', 'Kbbbbbbbbb..', 'K...........', 'K...........'], ink: { K: '#8a5a3b', r: '#e8613c', b: '#4fa3e0', w: '#ffffff', k: '#2d3246' } },
+  { id: 'dango', wave: 1, name: 'お花見だんご', price: 15, line: '花よりだんご…？どっちも好き！', shape: ['..ppp..', '.ppppp.', '..ppp..', '..www..', '.wwwww.', '..www..', '..ggg..', '.ggggg.', '..ggg..', '...k...', '...k...'], ink: { p: '#f7b6c8', w: '#fdfaf2', g: '#8cc77a', k: '#c9a26b' } },
+  { id: 'ladybug', wave: 1, name: 'てんとう虫', price: 10, line: 'お日さまに向かって飛ぶんだって', shape: ['...kkkk...', '..kwkkwk..', '.rrrkkrrr.', 'rrkrrkrkrr', 'rrrrrkrrrr', 'rkrrrkrrkr', '.rrrrkrrr.', '..rrrkrr..'], ink: { k: '#2d3246', r: '#e8413c', w: '#ffffff' } },
+  { id: 'momiji', wave: 2, name: 'もみじ', price: 10, line: '赤くてきれい！本にはさんでおこうっと', shape: ['.....r.....', '..r..r..r..', '..rr.r.rr..', '.rrrrorrrr.', 'rrrrrorrrrr', '.rrrrorrrr.', '..rrrrrrr..', '.rr..r..rr.', '.....k.....', '.....k.....'], ink: { r: '#e8613c', o: '#f39a3d', k: '#8a5a3b' } },
+  { id: 'tsukimi', wave: 2, name: 'おつきみうさぎ', price: 35, line: 'お月さまでおもちつき、してるのかな？', shape: ['..ww.ww.yyy.', '..wp.wp.yyyy', '..ww.ww..yyy', '.wwwwwww....', '.wkwwwkw....', '.wwwpwww....', 'wwwwwwwww...', 'wwwwwwwwwww.', '.wwwwwwwww..'], ink: { w: '#ffffff', p: '#f7b6c8', k: '#2d3246', y: '#ffd65c' } },
+  { id: 'pumpkin', wave: 2, name: 'かぼちゃランタン', price: 25, line: 'トリック・オア・トリート！', shape: ['.....g.....', '....gg.....', '..ooooooo..', '.ooooooooo.', 'oooKoooKooo', 'ooKKoooKKoo', 'ooooooooooo', 'ooKoKoKoKoo', '.ooKKKKKoo.', '..ooooooo..'], ink: { o: '#f39a3d', K: '#2d3246', g: '#5a9a48' } },
+  { id: 'strawberry', wave: 3, name: 'いちご', price: 10, line: 'あまずっぱい春の味！', shape: ['...ggg...', '..ggggg..', '.rrrrrrr.', 'rrwrrrwrr', 'rrrrrrrrr', 'rrrwrrrwr', '.rrrrrrr.', '..rrwrr..', '...rrr...', '....r....'], ink: { g: '#5a9a48', r: '#e8413c', w: '#ffd65c' } },
+  { id: 'dandelion', wave: 3, name: 'たんぽぽ', price: 12, line: '綿毛になったら、ふーってしたいな', shape: ['..yyy..', '.yyyyy.', 'yyYyYyy', '.yyyyy.', '..yyy..', '...g...', '.g.g...', '.ggg.g.', '...ggg.', '...g...'], ink: { y: '#ffd65c', Y: '#f39a3d', g: '#5a9a48' } },
+  { id: 'chestnut', wave: 4, name: 'くり', price: 12, line: 'いがいがに気をつけてね！', shape: ['....b....', '...bbb...', '..bbbbb..', '.bbbbbbb.', 'bbbwbbbbb', 'bbbbbbbbb', 'bbbbbbbbb', 'ccccccccc', '.ccccccc.'], ink: { b: '#8a5a3b', w: '#c9905a', c: '#e8c28a' } },
+  { id: 'imo', wave: 4, name: '焼きいも', price: 20, line: 'ほっくほく！半分こしよ？', shape: ['...pppppp...', '.pppppppppp.', 'ppppyyyypppp', 'ppyyyyyyyypp', '.ppyyyyyypp.', '...pppppp...'], ink: { p: '#8a4a7a', y: '#ffd65c' } },
+  { id: 'kinoko', wave: 4, name: 'きのこ', price: 15, line: 'かわいいけど、食べちゃダメなやつかも…', shape: ['...rrrrr...', '.rrwrrrwrr.', 'rrrrrwrrrrr', 'rwrrrrrrwrr', 'rrrrrrrrrrr', '...wwwww...', '...wwwww...', '...wwwww...', '..wwwwwww..'], ink: { r: '#e8413c', w: '#fdf3e6' } },
+  { id: 'hiyoko', wave: 5, name: 'ひよこ', price: 20, line: 'ぴよぴよ！マヤのあとをついてくるよ', shape: ['...yyy...', '..yyyyy..', '.yykyyyo.', '.yyyyyoo.', '.yyyyyy..', 'yyyyyyyy.', 'yyyyyyyyy', '.yyyyyyy.', '..o...o..'], ink: { y: '#ffd65c', k: '#2d3246', o: '#f39a3d' } },
+  { id: 'honey', wave: 5, name: 'はちみつ', price: 30, line: 'パンケーキにたっぷりかけたいな〜', shape: ['...kkkkk...', '..yyyyyyy..', '.bbybbbbbb.', '.bbybbbbbb.', 'bbbbbbbbbbb', 'bbbbbbbbbbb', 'bbbbbbbbbbb', '.bbbbbbbbb.'], ink: { k: '#8a5a3b', y: '#ffc93c', b: '#c98a3a' } },
+  { id: 'goldacorn', wave: 5, name: '金のどんぐり', price: 100, line: 'ピカピカのどんぐり！森の宝物だよ', shape: ['.....s......', '....ss......', '..dcccccd...', '.dcdcdcdcd..', '.cccccccccc.', '..aaaaaaaa..', '..ahaaaaaa..', '..ahaaaaaa..', '...aaaaaa...', '....aaaa....', '.....aa.....'], ink: { s: '#a8761a', c: '#c99a1a', d: '#a8761a', a: '#ffc93c', h: '#fff7c2' } },
+  { id: 'snowman', wave: 6, name: '雪だるま', price: 30, line: 'さむいけど、雪の日のおさんぽも楽しいね', shape: ['...kkk...', '..kkkkk..', '..wwwww..', '.wwkwkww.', '.wwwowww.', '..wwwww..', '.rrrrrrr.', 'wwwwwwwww', 'wwwwkwwww', 'wwwwwwwww', 'wwwwkwwww', '.wwwwwww.'], ink: { k: '#2d3246', w: '#ffffff', o: '#f39a3d', r: '#e8413c' } },
+  { id: 'kagami', wave: 6, name: '鏡もち', price: 25, line: 'あけましておめでとう！今年もいっしょに歩こ！', shape: ['....oo....', '...oooo...', '..gwwwwg..', '..wwwwww..', '.wwwwwwww.', 'wwwwwwwwww', '.wwwwwwww.', 'rrrrrrrrrr', '.r......r.'], ink: { o: '#f39a3d', g: '#5a9a48', w: '#fdfaf2', r: '#e8413c' } },
+  { id: 'snowflake', wave: 6, name: '雪の結晶', price: 15, line: 'ひとつひとつ形がちがうんだって！', shape: ['.....b.....', '...b.b.b...', '....bbb....', '.b...b...b.', '..b.bbb.b..', 'bbbbbbbbbbb', '..b.bbb.b..', '.b...b...b.', '....bbb....', '...b.b.b...', '.....b.....'], ink: { b: '#8fd3ee' } },
+  { id: 'shinkansen', wave: 7, name: '新幹線', price: 80, line: '東海道を新幹線なら2時間ちょっと！歩くと…？', shape: ['........wwwww...', '.....wwwwwwwwww.', '...wwwbbwbbwbbww', '.wwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwww', 'BBBBBBBBBBBBBBBB', 'wwwwwwwwwwwwwwww', '.kk...kk...kk...'], ink: { w: '#ffffff', b: '#4fa3e0', B: '#2f5fa8', k: '#2d3246' } },
+  { id: 'kamifusen', wave: 7, name: '紙ふうせん', price: 15, line: 'ぽーん、ぽーん！何回つけるかな？', shape: ['...rrbb...', '..rrrbbb..', '.yyrrbbgg.', 'yyyrrbbggg', 'yyyrrbbggg', '.yyrrbbgg.', '..rrrbbb..', '...rrbb...'], ink: { r: '#f7b6c8', b: '#8fd3ee', y: '#ffd65c', g: '#8cc77a' } },
+  { id: 'hanabi', wave: 8, name: '打ち上げ花火', price: 40, line: 'たーまやー！夏の夜のおさんぽもいいね', shape: ['.y...r...y.', '..y..r..y..', '...y.r.y...', '....yry....', 'rrrrrwrrrrr', '....yry....', '...y.r.y...', '..y..r..y..', '.y...r...y.'], ink: { y: '#ffd65c', r: '#f06b8a', w: '#ffffff' } },
+  { id: 'chochin', wave: 8, name: 'ちょうちん', price: 30, line: 'お祭りの夜は、ちょうちんがきれいだよ', shape: ['...kkkk...', '.rrrrrrrr.', 'rrrrrrrrrr', 'DDDDDDDDDD', 'rrrWWWWrrr', 'rrrrWWrrrr', 'DDDDDDDDDD', 'rrrrrrrrrr', '.rrrrrrrr.', '...kkkk...', '....k.....'], ink: { k: '#2d3246', r: '#e8413c', D: '#a8302c', W: '#fff1d0' } },
+  { id: 'kendama', wave: 8, name: 'けん玉', price: 20, line: 'もしかめ、何回できるか勝負しよ！', shape: ['....rrr....', '...rrrrr...', '...rrkrr...', '...rrrrr...', '....rrr....', '.....k.....', '..bbbbbbb..', '..b..b..b..', '.....b.....', '.....b.....', '.....b.....'], ink: { r: '#e8413c', k: '#2d3246', b: '#d9a05b' } },
+  { id: 'whale', wave: 9, name: 'くじら', price: 60, line: '海のおさんぽもしてみたいな〜', shape: ['.....c.c.....', '......c......', '..BBBBBBBB...', '.BBBBBBBBBB.B', 'BBwkBBBBBBBBB', 'BBBBBBBBBBBB.', 'WWWWWWWWWBB..', '.WWWWWWWB....'], ink: { c: '#8fd3ee', B: '#4f7fbf', W: '#dfe9f5', w: '#ffffff', k: '#2d3246' } },
+  { id: 'chest', wave: 9, name: '宝箱', price: 120, line: '中には…ひみつ！がんばったごほうびだよ', shape: ['..bbbbbbbb..', '.bbbbbbbbbb.', 'yyyyyyyyyyyy', 'bbbbbykbbbbb', 'bbbbbyybbbbb', 'bbbbbbbbbbbb', 'yyyyyyyyyyyy'], ink: { b: '#8a5a3b', y: '#ffc93c', k: '#2d3246' } },
+  { id: 'cherry', wave: 9, name: 'さくらんぼ', price: 15, line: 'ふたごのさくらんぼ、なかよしだね', shape: ['......g...', '.....g.g..', '....g...g.', '...g....g.', '..rr...rr.', '.rrrr.rrrr', '.rwrr.rwrr', '.rrrr.rrrr', '..rr...rr.'], ink: { g: '#5a9a48', r: '#e8413c', w: '#ffb4a0' } },
+  { id: 'saturn', wave: 10, name: '土星', price: 80, line: 'わっかがある星！いつか見に行こうね', shape: ['.....oooo.....', '...oooooooo...', '..oooooooooo..', 'yyyyyyyyyyyyyy', '..oooooooooo..', '...oooooooo...', '.....oooo.....'], ink: { o: '#e8b98a', y: '#ffd65c' } },
+  { id: 'ufo', wave: 10, name: 'UFO', price: 100, line: 'あれれ？マヤのおさんぽ、宇宙人も見てる？', shape: ['.....bbb.....', '....bwbbb....', '...bbbbbbb...', '.ggggggggggg.', 'gggyggyggyggg', '.ggggggggggg.', '...y..y..y...'], ink: { b: '#8fd3ee', w: '#ffffff', g: '#9fa8c0', y: '#ffd65c' } },
+);
+const waveDate = it => it.wave ? WAVES[it.wave - 1][0] : '';
+const released = it => !it.wave || todayKey() >= waveDate(it);
+const releasedWaves = () => WAVES.filter(([d]) => todayKey() >= d).length;
+const nextWave = () => WAVES.findIndex(([d]) => todayKey() < d);
 const ALL_GOODS = [...ITEMS, ...TREASURES];
 // 記念の条件
 const LOCKS = {
@@ -1710,7 +1780,12 @@ function renderKisekae() {
   const k = S.kise, st = lifeStats(), left = COIN_STEPS - st.total % COIN_STEPS;
   const tabs = `<div class="seg2" style="margin-bottom:14px"><button class="pill ${k.tab !== 'shelf' ? 'on' : ''}" data-act="ktab" data-id="dress">${icon('shirt')}きせかえ</button><button class="pill ${k.tab === 'shelf' ? 'on' : ''}" data-act="ktab" data-id="shelf">${icon('star')}たからもの</button></div>`;
   const next = `<div class="card nextcoin"><span class="coin"></span><div class="t">次のコインまで あと <b class="num">${fmt(left)}</b>歩<div class="prog"><i data-w="${(1 - left / COIN_STEPS) * 100}"></i></div></div></div>`;
-  app.innerHTML = topbar('ごほうび', 'home', coinBox('coin-top')) + tabs + (k.tab === 'shelf' ? shelfHtml(st) : dressHtml(st)) + next + `
+  const nw = nextWave();
+  const wave = nw < 0 ? '' : (() => {
+    const [d, name] = WAVES[nw], left = Math.round((parseKey(d) - parseKey(todayKey())) / 864e5), n = ALL_GOODS.filter(it => it.wave === nw + 1).length, dt = parseKey(d);
+    return `<div class="card wavebox">${face('happy')}<div><b>次の「${name}」</b><br><span class="num">${dt.getFullYear()}</span>年<span class="num">${dt.getMonth() + 1}</span>月<span class="num">${dt.getDate()}</span>日（あと<b class="num">${fmt(left)}</b>日）<br><small>新しいアイテムが${n}こ届くよ。中身はお楽しみ！</small></div></div>`;
+  })();
+  app.innerHTML = topbar('ごほうび', 'home', coinBox('coin-top')) + tabs + (k.tab === 'shelf' ? shelfHtml(st) : dressHtml(st)) + next + wave + `
     <p class="note" style="margin-top:12px">コインは、毎日の歩数を合計して 10,000歩ごとに1枚。7日連続で目標を達成するたびに+1枚、すごろくで京都に着くたびに+10枚もらえます。「記念」の品はコインでは買えず、長く歩き続けるともらえます。</p>`;
   setTimeout(() => app.querySelectorAll('.prog i[data-w]').forEach(i => i.style.width = i.dataset.w + '%'), 200);
 }
@@ -1736,7 +1811,7 @@ function dressHtml(st) {
       </div>
     </div>
     <div class="seg4" style="margin:18px 0 14px">${SLOTS.map(([id, name]) => `<button class="pill ${k.slot === id ? 'on' : ''}" data-act="slot" data-id="${id}">${name}</button>`).join('')}</div>
-    <div class="items">${ITEMS.filter(i => i.slot === k.slot).map(it => {
+    <div class="items">${ITEMS.filter(i => i.slot === k.slot && released(i)).map(it => {
       const worn = S.wallet.wear[it.slot] === it.id, own = isOwned(it, st);
       return `<button class="item ${k.try === it.id ? 'sel' : ''} ${it.lock && !own ? 'lock' : ''}" data-act="try" data-id="${it.id}">
         ${worn ? '<span class="chip badge">つけてる</span>' : `<span class="rare">${rarity(it)}</span>`}
@@ -1745,10 +1820,10 @@ function dressHtml(st) {
     }).join('')}</div>`;
 }
 function shelfHtml(st) {
-  const got = TREASURES.filter(t => isOwned(t, st)).length;
+  const list = TREASURES.filter(released), got = list.filter(t => isOwned(t, st)).length;
   return `
-    <div class="card shelfhead">${face('happy')}<div><span class="muted">あつめた たからもの</span><br><b class="num">${got}</b> / ${TREASURES.length}</div></div>
-    <div class="shelf">${TREASURES.map(t => {
+    <div class="card shelfhead">${face('happy')}<div><span class="muted">あつめた たからもの</span><br><b class="num">${got}</b> / ${list.length}</div></div>
+    <div class="shelf">${list.map(t => {
       const own = isOwned(t, st);
       return `<button class="tr ${own ? 'got' : ''}" data-act="tr" data-id="${t.id}">
         <span class="rare">${rarity(t)}</span>
@@ -1799,6 +1874,14 @@ function celebrateMilestones() {
     sfx('fanfare'); confetti();
     const pic = fresh.slot ? `<div class="mascot" style="width:96px;height:112px;margin:0 auto">${spriteSvg('happy', false, { [fresh.slot]: fresh.id })}</div>` : `<div class="trbig">${pixelSvg(fresh.shape, fresh.ink)}</div>`;
     popCard(`${pic}<h3>記念の品「${esc(fresh.name)}」！</h3><p>${esc(LOCKS[fresh.lock].text.replace('もらえる', 'もらえたよ'))}！<br>「ごほうび」で見てみてね</p>`, celebrateMilestones);
+    return;
+  }
+  const rw = releasedWaves();
+  if (rw > (S.wallet.seenWave || 0)) {
+    const items = ALL_GOODS.filter(it => it.wave > (S.wallet.seenWave || 0) && it.wave <= rw);
+    S.wallet.seenWave = rw; dbSet('wallet', S.wallet);
+    sfx('fanfare'); confetti();
+    popCard(`${mascot('happy')}<h3>${WAVES[rw - 1][1]}が届いたよ！</h3><p>新しいアイテムが${items.length}こ！<br>${items.map(it => esc(it.name)).join('、')}<br>「ごほうび」で見てみてね</p>`, celebrateMilestones);
     return;
   }
   if (lv > (S.wallet.lvSeen || 1)) {
@@ -1967,6 +2050,7 @@ document.addEventListener('visibilitychange', () => {
   try {
     const [days, outings, wallet, sugo, walk] = await Promise.all(['days', 'outings', 'wallet', 'sugo', 'walk'].map(dbGet));
     S.days = days || {}; S.outings = outings || []; S.wallet = { ...S.wallet, ...wallet }; S.sugo = sugo || { seen: 0 };
+    if (!wallet) S.wallet.seenWave = releasedWaves();   // 使い始めた人には、もう届いている分のお知らせは出さない
     // 2版目でコインの数え方を「1,000歩で1枚」から「10,000歩で1枚」に変えた。持っている小物はそのままで、使ったコインは0に戻す
     if (wallet && wallet.v !== 2) {
       const st = lifeStats();
