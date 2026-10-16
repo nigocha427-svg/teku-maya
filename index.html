@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -66,6 +66,8 @@ html,body{margin:0;min-height:100%;color:var(--ink);background:var(--bg);
   font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;font-weight:500;font-size:16px;line-height:1.7}
 /* 画面切り替えの横スライド中に、ページが横にはみ出さないようにする */
 html,body{overflow-x:hidden}
+/* ダブルタップでの拡大を止める */
+html{touch-action:manipulation}
 body.mapmode{overflow:hidden}
 button{font:inherit;color:inherit;cursor:pointer}
 .hidden{display:none!important}
@@ -910,6 +912,17 @@ const GUIDE = `
   <p class="note">使うとき：ショートカットを動かす → てくてくマヤを開く →「歩数をもらう」→ 出てきた「ペースト」を押す。7日分まとめて受け取れるので、毎日でなくても大丈夫です。</p>
   <p class="note">もっと楽にするには：ショートカットを長押し →「ホーム画面に追加」や、設定アプリの「アクセシビリティ ＞ タッチ ＞ 背面タップ」に割り当てると、すぐ動かせます。</p>`;
 function openGuide() { openSheet('ショートカットの作り方', GUIDE); }
+// ホーム画面に追加したアプリは、設定アプリの一覧に名前が出ない。「Safari」の設定で決まる
+const LOC_HELP = `
+  <p style="margin-top:0">ホーム画面に追加したアプリは、iPhoneの設定の一覧に名前が出てこないの。<b>「Safari」の設定</b>でまとめて決まるよ。</p>
+  <ol class="steps-guide">
+    <li>設定アプリ →<b>「プライバシーとセキュリティ」</b>→<b>「位置情報サービス」</b>がオンになっているか見る。</li>
+    <li>同じ画面を下へ進んで<b>「Safari Webサイト」</b>を押し、<b>「このAppの使用中」</b>（または「次回確認」）を選ぶ。<b>「正確な位置情報」</b>もオンにする。</li>
+    <li>設定アプリ →<b>「アプリ」</b>→<b>「Safari」</b>を開き、下のほうの<b>「位置情報」</b>を<b>「確認」</b>か<b>「許可」</b>にする。</li>
+    <li>てくてくマヤを一度<b>完全に閉じて</b>（下から上にスワイプして消す）、開き直す。</li>
+  </ol>
+  <p class="note">「その場で数える」の「動作と方向」をうっかり「許可しない」にしたときも、アプリを完全に閉じて開き直すと、もう一度聞かれます。</p>`;
+function openLocHelp() { openSheet('位置情報が使えないとき', LOC_HELP); }
 
 // ───── その場で数える（アプリを開いている間だけの万歩計）─────
 // 加速度センサーの揺れの山を数える。4歩続いたら歩いていると判断して数え始める
@@ -1179,9 +1192,12 @@ function renderSimple() {
 // ───── おでかけモード ─────
 const GSI = 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png';
 const ATTR = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a> | スポット: © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
-function newMap(el, center = [35.6812, 139.7671], zoom = 16) {
-  const m = L.map(el, { zoomControl: false }).setView(center, zoom);
-  L.tileLayer(GSI, { maxZoom: 18, attribution: ATTR }).addTo(m);
+// 地図の拡大縮小は、国土地理院の淡色地図がある範囲（ズーム5〜18）の中で、画面ごとに上限・下限を決める。
+// 日本のまわりより外へは動かせないようにして、地図のない灰色の部分が出ないようにする
+const JAPAN = [[20, 122], [46.5, 154]];
+function newMap(el, center = [35.6812, 139.7671], zoom = 16, { minZoom = 11, maxZoom = 18 } = {}) {
+  const m = L.map(el, { zoomControl: false, minZoom, maxZoom, maxBounds: JAPAN, maxBoundsViscosity: 1, bounceAtZoomLimits: false }).setView(center, zoom);
+  L.tileLayer(GSI, { minZoom: 5, maxZoom: 18, bounds: JAPAN, attribution: ATTR }).addTo(m);
   maps.push(m);
   return m;
 }
@@ -1207,7 +1223,7 @@ function startWatch() {
   if (!navigator.geolocation) return toast('位置情報が使えません');
   if (G.watch != null) return;
   G.watch = navigator.geolocation.watchPosition(onPos,
-    err => toast(err.code === 1 ? '位置情報を許可してね（設定 ＞ プライバシー ＞ 位置情報）' : '位置情報が取れないみたい'),
+    err => err.code === 1 ? openLocHelp() : toast('位置情報が取れないみたい。空が見える場所で待ってね'),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 function stopWatch() { if (G.watch != null) navigator.geolocation.clearWatch(G.watch); G.watch = null; }
@@ -1304,7 +1320,7 @@ function renderOdekake() {
       G.lastFix = [p.coords.latitude, p.coords.longitude];
       if (G.me) G.me.setLatLng(G.lastFix);
       if (G.map) G.map.setView(G.lastFix, 16);
-    }, () => {}, { enableHighAccuracy: true, timeout: 10000 });
+    }, err => { if (err.code === 1) openLocHelp(); }, { enableHighAccuracy: true, timeout: 10000 });
   } else startWatch();
   if (S.walk?.status === 'rec') keepAwake(true);
   renderOdekakeControls();
@@ -1571,7 +1587,7 @@ function renderSugoroku() {
   countUp();
   setTimeout(() => app.querySelectorAll('.prog i[data-w]').forEach(i => i.style.width = i.dataset.w + '%'), 250);
   // 地図：東海道のルート、たどり着いたところまでをメインの色で
-  const m = newMap(document.getElementById('sugomap'), [cur[2], cur[3]], 8);
+  const m = newMap(document.getElementById('sugomap'), [cur[2], cur[3]], 8, { minZoom: 6, maxZoom: 16 });
   const ac = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e07b22';
   const route = TOKAIDO.map(s => [s[2], s[3]]);
   L.polyline(route, { color: '#bcae9e', weight: 4, dashArray: '2 8', lineCap: 'round' }).addTo(m);
@@ -1766,6 +1782,7 @@ function renderSettings() {
         </div>
         <p class="note">身長から歩幅（${Math.round(stride() * 100)}cm）を、体重から消費カロリーを計算します。</p>
       </div>
+      <details class="card" style="margin-top:14px"><summary>${icon('target')}位置情報が使えないとき</summary>${LOC_HELP}</details>
       <details class="card" style="margin-top:14px"><summary>${icon('sync')}歩数の連携（ショートカット）</summary>${GUIDE}
         <button class="btn sub block" style="margin-top:8px" data-act="paste">${icon('clip')}手で貼り付けて受け取る</button></details>
       <div class="card" style="margin-top:14px">
@@ -1889,6 +1906,7 @@ app.addEventListener('click', async e => {
   }
 });
 
+document.addEventListener('gesturestart', e => e.preventDefault());
 // アプリに戻ってきたとき：数字を新しくし、記録中なら画面を消さない設定をかけ直す
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
