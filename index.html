@@ -957,7 +957,7 @@ async function applyHealth(map) {
   for (const k of keys) {
     const d = day(k);
     d.h = map[k]; d.hAt = Date.now();
-    if (k === today) d.l = 0;   // アプリで数えた分は、ヘルスケアの数字に含まれている
+    d.l = 0;   // アプリで数えた分は、その日のヘルスケアの数字にすでに含まれている（過去の日も同じ）
   }
   await dbSet('days', S.days);
   const after = sugoState().reachedTotal;
