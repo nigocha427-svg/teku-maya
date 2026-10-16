@@ -254,7 +254,7 @@ label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:1
 .restpanel{display:none}
 .mapscreen.resting #map{bottom:calc(50% - 22px)}
 .mapscreen.resting .mbottom{display:none}
-.mapscreen.resting .restpanel{display:flex;flex-direction:column;position:absolute;left:0;right:0;top:50%;bottom:0;margin-top:-22px;z-index:1001;overflow-y:auto;
+.mapscreen.resting .restpanel{display:flex;flex-direction:column;position:absolute;left:0;right:0;top:50%;bottom:0;margin-top:-22px;z-index:1001;overflow:hidden;
   background:var(--bg);background-image:radial-gradient(var(--bg-dot) 1.6px,transparent 1.8px);background-size:22px 22px;
   border-radius:26px 26px 0 0;box-shadow:0 -4px 0 var(--edge);padding:16px 16px 0;animation:sheet-in .42s var(--inout-cubic)}
 .rp-maya{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -263,7 +263,10 @@ label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:1
 .rp-maya .bubble{flex:1}
 .rp-maya .bubble small{font-size:12px}
 .spot.on{border-color:var(--accent);box-shadow:0 4px 0 var(--accent-deep)}
-.rp-ctl{position:sticky;bottom:0;margin-top:auto;padding:10px 0 calc(var(--safe-b) + 14px);background:var(--bg)}
+/* マヤとボタンは固定して、スポットの一覧だけをスクロールさせる */
+.rp-maya{flex:none}
+.rp-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:4px 16px 4px}
+.rp-ctl{flex:none;padding:10px 0 calc(var(--safe-b) + 14px);background:var(--bg)}
 
 /* ───── 下から出るパネル ───── */
 .sheet-wrap{position:fixed;inset:0;z-index:2000}
@@ -485,6 +488,7 @@ details.card[open] summary::after{transform:rotate(-135deg)}
   <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
   <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M12 2.5l6 8h-2.8l3.8 6.5H5l3.8-6.5H6z"/></symbol>
   <symbol id="i-torii" viewBox="0 0 24 24"><path d="M2.5 5c6.3 1.3 12.7 1.3 19 0"/><path d="M4.5 9.5h15M7 6v15M17 6v15M12 6.5v3"/></symbol>
+  <symbol id="i-temple" viewBox="0 0 24 24"><path d="M2.5 9.5C7 9 10 7 12 4c2 3 5 5 9.5 5.5"/><path d="M5 9.5v2.5h14V9.5M7 12v8.5M17 12v8.5M10 15h4M3 20.5h18"/></symbol>
   <symbol id="i-bread" viewBox="0 0 24 24"><path d="M5 11.5a7 5.5 0 0 1 14 0V18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M9.5 10.5l1.5 2M13 10.5l1.5 2"/></symbol>
   <symbol id="i-ice" viewBox="0 0 24 24"><path d="M6.5 10a5.5 5.5 0 0 1 11 0z"/><path d="M6.5 10l5.5 11 5.5-11"/></symbol>
   <symbol id="i-mount" viewBox="0 0 24 24"><path d="M2 20l7-12 4.5 7 2.5-3.5L22 20z"/><circle cx="17.5" cy="5.5" r="1.8"/></symbol>
@@ -1440,8 +1444,8 @@ function setRestMode(on) {
       <button class="rp-m" data-act="maya-spot" aria-label="マヤに近くのスポットを聞く">${mascot('normal', 'breathe', 'rest-m')}</button>
       <div class="bubble left pop" id="rest-bubble">ひと休み〜！<br>マヤをタップすると、近くのスポットをさがすよ</div>
     </div>
-    <div id="spotlist"></div>
-    <p class="note">地図：国土地理院 ／ スポット：© OpenStreetMap contributors（営業時間などは現地で確かめてね）</p>
+    <div class="rp-list"><div id="spotlist"></div>
+    <p class="note">地図：国土地理院 ／ スポット：© OpenStreetMap contributors（営業時間などは現地で確かめてね）</p></div>
     <div class="row rp-ctl"><button class="btn green" data-act="w-resume">${icon('play')}歩きはじめる</button><button class="btn" data-act="w-finish">${icon('stop')}おしまい</button></div>` : '';
   if (!on && G.spots) G.spots.clearLayers();
   renderOdekakeControls();
@@ -1465,7 +1469,7 @@ const SPOT_KINDS = {
   bakery: { name: 'パン屋さん', ic: 'bread', c: '#c9902a', line: n => `パンのいい匂いがしそう！「${n}」` },
   park: { name: '公園', ic: 'tree', c: '#5a9a48', line: n => `「${n}」でのんびりしよっか` },
   shrine: { name: '神社', ic: 'torii', c: '#e8613c', line: n => `「${n}」にお参りしていこ！` },
-  temple: { name: 'お寺', ic: 'torii', c: '#8a5a3b', line: n => `「${n}」で落ち着こうよ` },
+  temple: { name: 'お寺', ic: 'temple', c: '#8a5a3b', line: n => `「${n}」で落ち着こうよ` },
   view: { name: '景色', ic: 'mount', c: '#2f86b0', line: n => `「${n}」は景色がいいんだって！` },
   museum: { name: '見どころ', ic: 'museum', c: '#6c6aa8', line: n => `「${n}」、ちょっと寄ってみる？` },
 };
@@ -1536,7 +1540,7 @@ function focusSpot(i, moveMap = true) {
   const s = list[i], k = SPOT_KINDS[s.kind];
   const b = document.getElementById('rest-bubble');
   if (b) { b.innerHTML = `${esc(k.line(s.name))}<br><small class="muted">${k.name} ・ 歩いて約${walkMin(s.dist)}分</small>`; replay(b, 'pop'); }
-  document.querySelectorAll('#spotlist .spot').forEach((c, j) => c.classList.toggle('on', j === i));
+  document.querySelectorAll('#spotlist .spot').forEach((c, j) => { c.classList.toggle('on', j === i); if (j === i) c.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); });
   if (G.map && moveMap) {
     G.follow = false; document.querySelector('[data-act="locate"]')?.classList.remove('on');
     G.map.setView([s.lat, s.lng], Math.max(G.map.getZoom(), 16));
