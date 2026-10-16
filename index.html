@@ -250,6 +250,21 @@ label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:1
 .leaflet-popup-content .btn{margin-top:8px;width:100%}
 .pop-sub{color:var(--muted);font-size:12px}
 
+/* ───── 休憩画面：地図を上半分、マヤを下半分に ───── */
+.restpanel{display:none}
+.mapscreen.resting #map{bottom:calc(50% - 22px)}
+.mapscreen.resting .mbottom{display:none}
+.mapscreen.resting .restpanel{display:flex;flex-direction:column;position:absolute;left:0;right:0;top:50%;bottom:0;margin-top:-22px;z-index:1001;overflow-y:auto;
+  background:var(--bg);background-image:radial-gradient(var(--bg-dot) 1.6px,transparent 1.8px);background-size:22px 22px;
+  border-radius:26px 26px 0 0;box-shadow:0 -4px 0 var(--edge);padding:16px 16px 0;animation:sheet-in .42s var(--inout-cubic)}
+.rp-maya{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.rp-m{border:0;background:none;padding:0;flex:none;cursor:pointer}
+.rp-m .mascot{width:96px;height:112px}
+.rp-maya .bubble{flex:1}
+.rp-maya .bubble small{font-size:12px}
+.spot.on{border-color:var(--accent);box-shadow:0 4px 0 var(--accent-deep)}
+.rp-ctl{position:sticky;bottom:0;margin-top:auto;padding:10px 0 calc(var(--safe-b) + 14px);background:var(--bg)}
+
 /* ───── 下から出るパネル ───── */
 .sheet-wrap{position:fixed;inset:0;z-index:2000}
 .sheet-bg{position:absolute;inset:0;background:rgba(29,32,48,.35);animation:fade .3s var(--out-cubic)}
@@ -1261,14 +1276,20 @@ async function walkStart() {
   sfx('pop'); toast('いってきまーす！画面はつけたままにしてね');
   renderOdekakeControls();
 }
+// 一時停止＝休憩。地図を上半分にして、下半分にマヤの休憩画面を出す
 function walkPause() {
-  const w = S.walk; w.elapsed = walkElapsed(w); w.status = 'pause';
-  stopWatch(); keepAwake(false); persistWalk(); renderOdekakeControls();
+  const w = S.walk; w.elapsed = walkElapsed(w); w.status = 'pause'; w.rests++;
+  stopWatch(); keepAwake(false); persistWalk();
+  G.restList = null; G.restIdx = 0;
+  document.getElementById('restbar') && (document.getElementById('restbar').innerHTML = '');
+  setRestMode(true);
 }
 async function walkResume() {
   const w = S.walk; w.status = 'rec'; w.resumeAt = Date.now(); w.segs.push([]); w.lastMoveAt = Date.now();
   if (!Ped.on) await Ped.start();
-  startWatch(); keepAwake(true); persistWalk(); renderOdekakeControls();
+  startWatch(); keepAwake(true); persistWalk();
+  setRestMode(false);
+  toast('また歩こう！');
 }
 async function walkFinish() {
   const w = S.walk;
@@ -1290,7 +1311,7 @@ async function walkFinish() {
 function renderOdekake() {
   document.body.classList.add('mapmode');
   app.innerHTML = `
-    <div class="mapscreen">
+    <div class="mapscreen" id="mapscreen">
       <div id="map"></div>
       <div class="mtop">
         <button class="round" data-act="go" data-id="home" aria-label="戻る">${icon('back')}</button>
@@ -1300,11 +1321,9 @@ function renderOdekake() {
           <div><b class="num" id="w-steps">0</b><span>歩</span></div>
         </div>
       </div>
-      <div class="mside">
-        <button class="round" data-act="locate" aria-label="現在地">${icon('target')}</button>
-        <button class="round" data-act="spots" aria-label="近くのスポット">${icon('search')}</button>
-      </div>
+      <div class="mside"><button class="round" data-act="locate" aria-label="現在地">${icon('target')}</button></div>
       <div class="mbottom"><div id="restbar"></div><div id="wctl"></div></div>
+      <div class="restpanel" id="restpanel"></div>
     </div>`;
   const center = G.lastFix || S.walk?.segs.flat().slice(-1)[0] || [35.6812, 139.7671];
   const m = G.map = newMap(document.getElementById('map'), [center[0], center[1]], 16);
@@ -1323,15 +1342,14 @@ function renderOdekake() {
     }, err => { if (err.code === 1) openLocHelp(); }, { enableHighAccuracy: true, timeout: 10000 });
   } else startWatch();
   if (S.walk?.status === 'rec') keepAwake(true);
-  renderOdekakeControls();
-  updateWalkStats();
+  setRestMode(S.walk?.status === 'pause');
   clearInterval(G.timer);
   G.timer = setInterval(() => {
     if (!S.walk) return;
     updateWalkStats();
-    // 90秒ほとんど動かなかったら、休憩中とみなしてスポットを提案する
+    // 90秒ほとんど動かなかったら、休憩するか聞く
     if (S.screen === 'odekake' && S.walk.status === 'rec' && !G.restShown && Date.now() - S.walk.lastMoveAt > 90000) {
-      G.restShown = true; S.walk.rests++; suggestRest(true);
+      G.restShown = true; askRest();
     }
   }, 5000);
 }
@@ -1339,12 +1357,38 @@ function renderOdekakeControls() {
   const box = document.getElementById('wctl'); if (!box) return;
   const w = S.walk;
   box.innerHTML = !w ? `<button class="btn green block" data-act="w-start">${icon('play')}おでかけスタート</button>`
-    : w.status === 'rec' ? `<div class="row"><button class="btn sub" data-act="w-rest">${icon('coffee')}休憩する</button><button class="btn sub" data-act="w-pause">${icon('pause')}一時停止</button></div>`
-    : `<div class="row"><button class="btn green" data-act="w-resume">${icon('play')}再開</button><button class="btn" data-act="w-finish">${icon('stop')}おしまい</button></div>`;
+    : `<div class="row"><button class="btn green" data-act="w-pause">${icon('coffee')}休憩する</button><button class="btn" data-act="w-finish">${icon('stop')}おしまい</button></div>`;
   updateWalkStats();
 }
+// 休憩画面の切り替え（地図の大きさが変わるので、Leaflet に知らせて現在地を真ん中に戻す）
+function setRestMode(on) {
+  const scr = document.getElementById('mapscreen'); if (!scr) return;
+  scr.classList.toggle('resting', on);
+  const panel = document.getElementById('restpanel');
+  panel.innerHTML = on ? `
+    <div class="rp-maya">
+      <button class="rp-m" data-act="maya-spot" aria-label="マヤに近くのスポットを聞く">${mascot('normal', 'breathe', 'rest-m')}</button>
+      <div class="bubble left pop" id="rest-bubble">ひと休み〜！<br>マヤをタップすると、近くのスポットをさがすよ</div>
+    </div>
+    <div id="spotlist"></div>
+    <p class="note">地図：国土地理院 ／ スポット：© OpenStreetMap contributors（営業時間などは現地で確かめてね）</p>
+    <div class="row rp-ctl"><button class="btn green" data-act="w-resume">${icon('play')}歩きはじめる</button><button class="btn" data-act="w-finish">${icon('stop')}おしまい</button></div>` : '';
+  if (!on && G.spots) G.spots.clearLayers();
+  renderOdekakeControls();
+  if (G.map) setTimeout(() => {
+    G.map.invalidateSize();
+    const here = G.lastFix || S.walk?.segs.flat().slice(-1)[0];
+    if (here) G.map.setView([here[0], here[1]], G.map.getZoom());
+  }, 60);
+}
+function askRest() {
+  const bar = document.getElementById('restbar'); if (!bar) return;
+  bar.innerHTML = `<div class="restbar pop">${mascot('normal', 'breathe')}<div class="t">ちょっと休憩中かな？<small>休憩するなら、マヤが近くのスポットをさがすよ</small></div>
+    <div class="acts"><button class="btn small" data-act="w-pause">休憩する</button><button class="btn sub small" data-act="rest-close">とじる</button></div></div>`;
+  sfx('pop');
+}
 
-// ───── 休憩スポットの提案（OpenStreetMap のデータを Overpass API で検索）─────
+// ───── 休憩スポットの提案（OpenStreetMap のデータを Photon で検索）─────
 const SPOT_KINDS = {
   cafe: { name: 'カフェ', ic: 'coffee', c: '#a8561a', line: n => `ひと休みに「${n}」はどう？` },
   sweets: { name: 'スイーツ', ic: 'ice', c: '#e06d8a', line: n => `甘いもの食べたいな〜。「${n}」があるよ！` },
@@ -1355,45 +1399,43 @@ const SPOT_KINDS = {
   view: { name: '景色', ic: 'mount', c: '#2f86b0', line: n => `「${n}」は景色がいいんだって！` },
   museum: { name: '見どころ', ic: 'museum', c: '#6c6aa8', line: n => `「${n}」、ちょっと寄ってみる？` },
 };
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-function kindOf(t) {
-  if (t.amenity === 'cafe') return 'cafe';
-  if (t.amenity === 'ice_cream' || t.shop === 'confectionery' || t.shop === 'pastry') return 'sweets';
-  if (t.shop === 'bakery') return 'bakery';
-  if (t.leisure === 'park' || t.leisure === 'garden') return 'park';
-  if (t.amenity === 'place_of_worship') return t.religion === 'shinto' ? 'shrine' : t.religion === 'buddhist' ? 'temple' : null;
-  if (t.tourism === 'viewpoint') return 'view';
-  if (t.tourism === 'museum' || t.tourism === 'gallery' || t.tourism === 'attraction' || t.historic) return 'museum';
+// Photon の「近いもの検索（reverse）」で、種類（OSMのタグ）をしぼって探す。
+// 食べもの系と、公園・神社などの系統に分けて2回聞く（1回だとカフェばかりになるため）
+const PHOTON = 'https://photon.komoot.io/reverse';
+const SPOT_TAGS = [
+  ['amenity:cafe', 'amenity:ice_cream', 'shop:bakery', 'shop:confectionery', 'shop:pastry'],
+  ['leisure:park', 'leisure:garden', 'amenity:place_of_worship', 'tourism:viewpoint', 'tourism:museum', 'tourism:attraction', 'historic:castle', 'historic:monument', 'historic:ruins'],
+];
+function kindOf(key, val, name) {
+  if (val === 'cafe') return 'cafe';
+  if (val === 'ice_cream' || val === 'confectionery' || val === 'pastry') return 'sweets';
+  if (val === 'bakery') return 'bakery';
+  if (val === 'park' || val === 'garden') return 'park';
+  if (val === 'place_of_worship') return /寺|院|観音|不動|大師|堂/.test(name) ? 'temple' : /神社|宮|稲荷|八幡|社$/.test(name) ? 'shrine' : null;
+  if (val === 'viewpoint') return 'view';
+  if (key === 'tourism' || key === 'historic') return 'museum';
   return null;
 }
 async function findSpots(lat, lng) {
   const ck = `${lat.toFixed(3)},${lng.toFixed(3)}`;
   if (G.spotCache[ck]) return G.spotCache[ck];
-  const a = `(around:700,${lat.toFixed(5)},${lng.toFixed(5)})`;
-  const q = `[out:json][timeout:12];(
-    nwr${a}[amenity~"^(cafe|ice_cream|place_of_worship)$"][name];
-    nwr${a}[shop~"^(bakery|confectionery|pastry)$"][name];
-    nwr${a}[leisure~"^(park|garden)$"][name];
-    nwr${a}[tourism~"^(viewpoint|museum|gallery|attraction)$"][name];
-    nwr${a}[historic~"^(castle|ruins|monument|city_gate|archaeological_site)$"][name];
-  );out center 120;`;
-  let json = null, lastErr = null;
-  for (const url of OVERPASS) {
+  const ask = async tags => {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 12000);
     try {
-      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 12000);   // 混んでいるサーバーは12秒であきらめて次へ
-      const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
-      clearTimeout(tm);
+      const u = `${PHOTON}?lat=${lat.toFixed(5)}&lon=${lng.toFixed(5)}&radius=0.8&limit=30&` + tags.map(t => 'osm_tag=' + t).join('&');
+      const r = await fetch(u, { signal: ctl.signal });
       if (!r.ok) throw new Error('HTTP ' + r.status);
-      json = await r.json(); break;
-    } catch (e) { lastErr = e; }
-  }
-  if (!json) throw lastErr || new Error('検索できませんでした');
+      return (await r.json()).features || [];
+    } finally { clearTimeout(tm); }
+  };
+  const got = await Promise.allSettled(SPOT_TAGS.map(ask));
+  if (got.every(g => g.status === 'rejected')) throw got[0].reason;
   const seen = new Set(), list = [];
-  for (const el of json.elements) {
-    const t = el.tags || {}, kind = kindOf(t), la = el.lat ?? el.center?.lat, lo = el.lon ?? el.center?.lon;
-    if (!kind || la == null || !t.name || seen.has(t.name)) continue;
-    seen.add(t.name);
-    list.push({ name: t.name, kind, lat: la, lng: lo, dist: hav([lat, lng], [la, lo]) });
+  for (const f of got.flatMap(g => g.status === 'fulfilled' ? g.value : [])) {
+    const p = f.properties || {}, [lo, la] = f.geometry?.coordinates || [], kind = p.name && kindOf(p.osm_key, p.osm_value, p.name);
+    if (!kind || la == null || seen.has(p.name)) continue;
+    seen.add(p.name);
+    list.push({ name: p.name, kind, lat: la, lng: lo, dist: hav([lat, lng], [la, lo]) });
   }
   list.sort((x, y) => x.dist - y.dist);
   // いろいろな種類が出るように、まず種類ごとにいちばん近いものを選んでから、
@@ -1408,51 +1450,54 @@ const walkMin = m => Math.max(1, Math.round(m / 80));   // 歩く速さ 分速80
 function showSpotPins(list) {
   if (!G.spots) return;
   G.spots.clearLayers();
-  list.forEach(s => {
+  list.forEach((s, i) => {
     const k = SPOT_KINDS[s.kind];
     const mk = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: '', html: `<div class="spot-pin" style="--c:${k.c}">${icon(k.ic)}</div>`, iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -14] }) });
     mk.bindPopup(`<b>${esc(s.name)}</b><div class="pop-sub">${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</div>`);
+    mk.on('click', () => focusSpot(i, false));
     mk.spot = s;
     G.spots.addLayer(mk);
   });
 }
-async function suggestRest(auto) {
-  const bar = document.getElementById('restbar'); if (!bar) return;
-  const here = G.lastFix || S.walk?.segs.flat().slice(-1)[0];
-  if (!here) return toast('現在地がまだわからないよ');
-  bar.innerHTML = `<div class="restbar pop">${mascot('normal', 'breathe')}<div class="t">${auto ? 'ちょっと休憩中かな？' : '休憩しよっか！'}<small>近くのスポットをさがしてるよ…</small></div></div>`;
-  try {
-    const list = await findSpots(here[0], here[1]);
-    showSpotPins(list);
-    if (!list.length) { bar.innerHTML = `<div class="restbar">${mascot('normal')}<div class="t">近くにスポットが見つからなかったよ<small>少し休んだら、また歩こうね</small></div><div class="acts"><button class="btn sub small" data-act="rest-close">とじる</button></div></div>`; return; }
-    const top = list[0], k = SPOT_KINDS[top.kind];
-    bar.innerHTML = `<div class="restbar pop">${mascot('happy', '', 'rest-mascot')}<div class="t">${esc(k.line(top.name))}<small>${k.name} ・ 歩いて約${walkMin(top.dist)}分</small></div>
-      <div class="acts"><button class="btn small" data-act="spots-list">ほかも</button><button class="btn sub small" data-act="rest-close">とじる</button></div></div>`;
-    sfx('pop');
-    setTimeout(() => setExpr(document.getElementById('rest-mascot'), 'normal'), 1400);
-  } catch (e) {
-    bar.innerHTML = `<div class="restbar">${mascot('normal')}<div class="t">スポットを探せなかったよ<small>電波のいいところで、虫めがねのボタンを押してね</small></div><div class="acts"><button class="btn sub small" data-act="rest-close">とじる</button></div></div>`;
+// スポットを1つ選ぶ：地図をそこへ動かし、吹き出しと一覧の色を合わせる
+function focusSpot(i, moveMap = true) {
+  const list = G.restList; if (!list?.length) return;
+  G.restIdx = i;
+  const s = list[i], k = SPOT_KINDS[s.kind];
+  const b = document.getElementById('rest-bubble');
+  if (b) { b.innerHTML = `${esc(k.line(s.name))}<br><small class="muted">${k.name} ・ 歩いて約${walkMin(s.dist)}分</small>`; replay(b, 'pop'); }
+  document.querySelectorAll('#spotlist .spot').forEach((c, j) => c.classList.toggle('on', j === i));
+  if (G.map && moveMap) {
+    G.follow = false; document.querySelector('[data-act="locate"]')?.classList.remove('on');
+    G.map.setView([s.lat, s.lng], Math.max(G.map.getZoom(), 16));
+    G.spots?.eachLayer(mk => { if (mk.spot === s) mk.openPopup(); });
   }
 }
-async function openSpotList() {
+// 休憩画面のマヤをタップ：1回目は近くをさがし、2回目からは次のスポットをおすすめする
+async function mayaSpot() {
+  const m = document.getElementById('rest-m'), b = document.getElementById('rest-bubble');
+  replay(m, 'jelly'); setExpr(m, 'happy'); sfx('pop');
+  clearTimeout(mayaSpot.t); mayaSpot.t = setTimeout(() => setExpr(document.getElementById('rest-m'), 'normal'), 1400);
+  if (G.restList?.length) return focusSpot((G.restIdx + 1) % G.restList.length);
+  if (G.restBusy) return;
   const here = G.lastFix || S.walk?.segs.flat().slice(-1)[0];
-  if (!here) return toast('現在地がまだわからないよ');
-  const sh = openSheet('近くのスポット', '<p class="muted">さがしてるよ…</p>');
+  if (!here) { b.textContent = '現在地がまだわからないよ…空が見えるところで待ってね'; return; }
+  G.restBusy = true;
+  b.innerHTML = 'ちょっと待ってね、近くをさがしてるよ…'; replay(b, 'pop');
   try {
     const list = await findSpots(here[0], here[1]);
+    G.restList = list; G.restIdx = 0;
     showSpotPins(list);
-    sh.el.innerHTML = list.length ? list.map((s, i) => { const k = SPOT_KINDS[s.kind];
-      return `<button class="spot" data-i="${i}"><span class="ic" style="--c:${k.c}">${icon(k.ic)}</span><span class="t"><b>${esc(s.name)}</b><small>${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</small></span>${icon('next')}</button>`; }).join('')
-      + '<p class="note">スポットの情報：© OpenStreetMap contributors（営業時間などは現地で確かめてね）</p>'
-      : '<p>近くにスポットが見つからなかったよ。</p>';
-    sh.el.querySelectorAll('.spot').forEach(b => b.onclick = () => {
-      const s = list[+b.dataset.i]; sh.close();
-      if (!G.map) return;
-      G.follow = false; document.querySelector('[data-act="locate"]')?.classList.remove('on');
-      G.map.setView([s.lat, s.lng], 17);
-      G.spots.eachLayer(mk => { if (mk.spot === s) mk.openPopup(); });
-    });
-  } catch (e) { sh.el.innerHTML = '<p>スポットを探せなかったよ。電波のいいところでもう一度ためしてね。</p>'; }
+    const box = document.getElementById('spotlist');
+    if (!list.length) { b.textContent = '近くにスポットが見つからなかったよ。少し休んだら、また歩こうね'; return; }
+    if (box) {
+      box.innerHTML = list.map((s, i) => { const k = SPOT_KINDS[s.kind];
+        return `<button class="spot" data-act="spot" data-id="${i}"><span class="ic" style="--c:${k.c}">${icon(k.ic)}</span><span class="t"><b>${esc(s.name)}</b><small>${k.name} ・ 歩いて約${walkMin(s.dist)}分（${fmt(s.dist)}m）</small></span>${icon('next')}</button>`; }).join('');
+    }
+    focusSpot(0);
+  } catch (e) {
+    b.textContent = 'うまくさがせなかったよ…。もう一度マヤをタップしてみてね';
+  } finally { G.restBusy = false; }
 }
 
 // ───── 活動履歴 ─────
@@ -1803,7 +1848,7 @@ function renderSettings() {
         <p class="note">記録はこのiPhoneの中だけに保存されます。機種変更やSafariのデータ削除に備えて、ときどきバックアップを「ファイル」アプリに保存してください。</p>
         <div class="row"><button class="btn sub" data-act="export">${icon('down')}書き出す</button><button class="btn sub" data-act="import">${icon('up')}読み込む</button></div>
       </div>
-      <p class="note" style="margin-top:16px">地図：国土地理院 ／ スポット：© OpenStreetMap contributors（Overpass API）</p>
+      <p class="note" style="margin-top:16px">地図：国土地理院 ／ スポット：© OpenStreetMap contributors（検索：Photon by komoot）</p>
     </div>`;
   const num = (id, lo, hi, key) => {
     const el = document.getElementById(id);
@@ -1871,9 +1916,9 @@ app.addEventListener('click', async e => {
     case 'w-pause': return walkPause();
     case 'w-resume': return walkResume();
     case 'w-finish': return walkFinish();
-    case 'w-rest': S.walk.rests++; persistWalk(); return suggestRest(false);
     case 'rest-close': document.getElementById('restbar').innerHTML = ''; return;
-    case 'spots': case 'spots-list': return openSpotList();
+    case 'maya-spot': return mayaSpot();
+    case 'spot': return focusSpot(+id);
     case 'locate':
       G.follow = true; b.classList.add('on');
       if (G.lastFix && G.map) G.map.setView(G.lastFix, 17);

@@ -1,5 +1,5 @@
 // アプリ本体をキャッシュして、電波が弱い場所でも起動できるようにする
-const CACHE = 'teku-maya-v3';
+const CACHE = 'teku-maya-v4';
 const SHELL = [
   './',
   'index.html',
@@ -25,7 +25,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   // 地図タイルとスポット検索は常にネットワークから
-  if (url.hostname === 'cyberjapandata.gsi.go.jp' || url.pathname.includes('/interpreter')) return;
+  if (url.hostname === 'cyberjapandata.gsi.go.jp' || url.hostname === 'photon.komoot.io') return;
   // アプリ本体はネット優先・失敗したらキャッシュ（更新がすぐ反映されるように）
   e.respondWith(
     fetch(e.request)
